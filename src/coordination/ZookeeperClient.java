@@ -1,0 +1,462 @@
+package coordination;
+
+
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Random;
+
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+
+import javax.xml.crypto.Data;
+
+import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.ZooDefs.Ids;
+import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.data.Stat;
+
+import zookeeper.util.Znode.EnsembleData;
+import zookeeper.util.Znode.ServerData;
+import zookeeper.util.Znode.SortedServers;
+
+
+import com.google.protobuf.InvalidProtocolBufferException;
+
+
+
+public class ZookeeperClient{
+
+	static ZooKeeper zk = null;
+	String zkConnectionString = "localhost:2181";
+	int sessionTimeOut = 3000;
+	String nameSpace = "/logservice";
+	String serverRootPath = nameSpace + "/servers";
+	String serversGlobalViewPath = serverRootPath;//logServiceRootPath + "/serversFullView";
+	String ensembleRootPath = nameSpace + "/ensembles";
+	String myServerZnodePath = null;
+	String ensembleMembersZnodeName = "ensembleMembers"; 
+
+
+	//connect to zookeeper and register a wacher object
+	public ZookeeperClient( Watcher watcher) throws KeeperException, IOException, InterruptedException
+	{
+		if(zk==null)
+		{
+			zk = new ZooKeeper(zkConnectionString, sessionTimeOut, watcher);	
+			
+			createRoot(nameSpace);
+			createRoot(serverRootPath);
+			createRoot(serversGlobalViewPath);
+			createRoot(ensembleRootPath);
+		}
+		
+		myServerZnodePath = serverRootPath + "/" + NetworkUtil.getServerSocketAddress(); //( socketAddress != null ? socketAddress : new Random().nextInt(100000) );
+	}
+	
+	/**
+	 * As the node might be created between time that exists method is returned and 
+	 * the time that create method is invoked NodeExists exception is checked. 
+	 * @param path
+	 * @throws KeeperException
+	 * @throws InterruptedException
+	 */
+	void createRoot(String path) throws KeeperException, InterruptedException
+	{
+		try {
+			Stat s = zk.exists(path, false);
+			if(s==null)
+				zk.create(path, new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+		} catch (KeeperException.NodeExistsException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} 
+	}
+	
+	public void close()
+	{
+		try {
+			zk.close();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
+	//just for TESTING purpose only
+	static String getLocalInetSocket()
+	{
+		int serverPort = 3339;
+		try {
+			return InetAddress.getLocalHost().getHostAddress() + ":" + serverPort;
+		} catch (UnknownHostException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+
+		}
+		return null;
+	}
+
+	public String getMyServerZnodePath() {
+		return myServerZnodePath;
+	}
+
+
+	//-------------------------------------------------------------------------------------------------- Server Nodes ---------------------------------------------------------------
+	//deprecated
+	public boolean createServerZnode(ServerData data) throws KeeperException, InterruptedException
+	{
+		Stat s = zk.exists(myServerZnodePath, false);
+		if(s==null)
+		{
+			zk.create(myServerZnodePath, data.toByteArray(), Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
+			return true;
+		}
+		return false;
+	}
+	
+	//For testing Only
+	public boolean createServerZnode(String nameNode, ServerData data) throws KeeperException, InterruptedException
+	{
+		String path = serverRootPath + "/" +  nameNode;
+		Stat s = zk.exists(path, false);
+		if(s==null)
+		{
+			zk.create(path, data.toByteArray(), Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
+			return true;
+		}
+		return false;
+	}
+
+	//if node exist update it otherwise create it with the given data
+	public void updateServerZnode(ServerData data) throws KeeperException, InterruptedException
+	{
+
+		if(!createServerZnode(data))
+			zk.setData(myServerZnodePath, data.toByteArray(), -1);	
+	}
+
+	public void deleteServerZnode() throws KeeperException, InterruptedException
+	{
+		Stat s = zk.exists(myServerZnodePath, false);
+		if(s!=null)
+			zk.delete(myServerZnodePath, -1);
+	}
+
+	public ServerData getServerZnodeDataByNodeName(String nodeName) throws KeeperException, InterruptedException, InvalidProtocolBufferException
+	{
+		Stat s = new Stat();
+		byte[] data = zk.getData(serverRootPath + "/" + nodeName, false, s);
+		return ServerData.parseFrom(data);
+	}
+	
+	//testing
+	public ServerData getServerZnodeData(String path) throws KeeperException, InterruptedException, InvalidProtocolBufferException
+	{
+		Stat s = new Stat();
+		byte[] data = zk.getData(path, false, s);
+		return ServerData.parseFrom(data);
+	}
+	
+	public List<String> getServerList() throws KeeperException, InterruptedException
+	{
+		return zk.getChildren(serverRootPath, false);
+	}
+
+	//----------------------------------  ------------------------------------------------------------------- Ensemble-----------------------------------------------------------------------
+
+	public String createEnsembleZnode(EnsembleData data) throws KeeperException, InterruptedException
+	{
+		String ensemblePath = zk.create(ensembleRootPath+"/ensemble-", data.toByteArray(), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT_SEQUENTIAL);
+		zk.create( ensemblePath + "/" + ensembleMembersZnodeName, new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT );
+		return ensemblePath;
+	}
+
+	public void createMyEnsembleEmphemeralZnode(String ensemblePath, String myZnodeName) throws KeeperException, InterruptedException
+	{
+		zk.create( ensemblePath + "/" + ensembleMembersZnodeName + "/" + myZnodeName, new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
+	}
+
+	public void updateEnsembleZnode(String ensemblePath, EnsembleData data) throws KeeperException, InterruptedException
+	{
+		zk.setData(ensemblePath, data.toByteArray(), -1);
+	}
+
+	public void deleteEnsembleZnode(String ensemblePath) throws InterruptedException, KeeperException
+	{
+		zk.delete(ensemblePath, -1);
+	}
+
+	public EnsembleData getEnsembleData(String ensemblePath) throws KeeperException, InterruptedException, InvalidProtocolBufferException
+	{
+		EnsembleData data = EnsembleData.parseFrom(zk.getData(ensemblePath,false, null));
+		return data;
+	}
+	//leader operation
+
+	//failure operation
+
+
+	//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+	public boolean exists(String path) throws KeeperException, InterruptedException
+	{
+		Stat s = zk.exists(path, false);
+		if(s==null)
+			return false;
+		else
+			return true;
+	}
+	//choose subset of all children of server node and sort them, nodes are chosen randomly and there is a lower limit of number of retured candidates 
+	//working fine
+	public List<ServerData> getEnsembleCandidates() throws KeeperException, InterruptedException, InvalidProtocolBufferException
+	{
+		float subSetFraction = 0.1f;
+		int minCandidates = 5;
+		int numCandidates = minCandidates;
+		boolean returnAll = false;
+
+
+		List<String> children = zk.getChildren(serverRootPath, false);
+
+		if( minCandidates >= children.size() )
+		{
+			returnAll=true;
+			numCandidates = children.size();
+		}else
+		{
+			if( minCandidates >= subSetFraction*children.size() )
+			{
+				numCandidates = minCandidates;
+			}else
+			{
+				numCandidates = Math.round((subSetFraction * children.size()) );
+			}
+		}
+
+		List<ServerData> sortedCandidates = new LinkedList<ServerData>(); 
+		//System.out.println("Number of children:" + children.size() + "\n");
+
+		int nextCandidateIndex=0;
+		int sortedCandidatesSize=0;
+		Random rnd = new Random();
+		for(int i = 0 ; i < numCandidates; i++)
+		{
+
+			if(returnAll==true)
+				nextCandidateIndex=i;
+			else
+				nextCandidateIndex=rnd.nextInt(children.size());
+
+			//if the element has been selected start a new iteration
+			if( returnAll==false && sortedCandidates.contains(children.get(nextCandidateIndex)) )
+			{
+				i--;
+				continue;
+			}
+
+
+			Stat stat = new Stat();
+			byte[] data = zk.getData(serverRootPath + "/" + children.get(i), false, stat);
+
+			ServerData dataObject = ServerData.parseFrom(data);
+
+			sortedCandidatesSize = sortedCandidates.size();
+
+			boolean addedInLoop = false;
+			for(int j=0; j<sortedCandidatesSize ;j++)
+			{
+				if(dataObject.getCapacityLeft() >= sortedCandidates.get(j).getCapacityLeft())
+				{	
+					sortedCandidates.add(j, dataObject);
+					addedInLoop = true;
+					break;
+				}
+			}
+			//add first element and the smallest elements to the tail
+			if(addedInLoop==false)
+				sortedCandidates.add(dataObject);
+
+		}
+
+		return sortedCandidates;
+	}
+
+	//---------------------------------------------------Servers View Snapshot----------------------
+	
+	//sort all the servers based on the capacity left using insertion sort, those with max capacity come in the beginning
+	List<ServerData> sortedServersList() throws KeeperException, InterruptedException, InvalidProtocolBufferException
+	{
+		List<ServerData> sortedServers = new LinkedList<ServerData>(); 
+		List<String> children = zk.getChildren(serverRootPath, false);
+		
+		for(int i = 0 ; i < children.size(); i++)
+		{
+			//Stat stat = new Stat();
+			
+			byte[] data = zk.getData(serverRootPath + "/" + children.get(i), false, null);
+
+			ServerData serverData = ServerData.parseFrom(data);
+
+	
+			boolean addedInLoop = false;
+			for(int j=0; j < sortedServers.size() ;j++)
+			{
+				if(serverData.getCapacityLeft() >= sortedServers.get(j).getCapacityLeft())
+				{	
+					sortedServers.add(j, serverData);
+					addedInLoop = true;
+					break;
+				}
+			}
+			//add first element and the smallest elements to the tail
+			if(addedInLoop==false)
+				sortedServers.add(serverData);
+		}
+
+		return sortedServers;
+	}
+	
+	//update the sortedServers node with sortedServers and the index of the leaders, each leader is in charge of all nodes till next leader in the list
+	public void updateSortedServersZnode() throws InvalidProtocolBufferException, KeeperException, InterruptedException
+	{
+		List<ServerData> sortedServers = sortedServersList();
+		applyEliminationPolicy(sortedServers);
+		List<Integer> leaderIndexList = leaderIndexList(sortedServers);
+		
+		SortedServers.Builder data = SortedServers.newBuilder();
+		data.addAllSortedServers(sortedServers);
+		data.addAllLeaderIndex(leaderIndexList);
+		
+		updateSortedServersZnode(data.build());
+	}
+
+	//implement the policy which server can participate i a chain
+	void applyEliminationPolicy(List<ServerData> sortedServers)
+	{
+
+	}
+	
+	List<Integer> leaderIndexList(List<ServerData> sortedServers)
+	{
+		List<Integer> leaderIndexList = new ArrayList<Integer>();
+		
+		for(int i = 0; i < sortedServers.size(); i++)
+			if(i%3==0 /*&& sortedServers.size()-i>=3*/)
+				leaderIndexList.add(i);
+			
+		return leaderIndexList;
+	}
+
+	//if node exist update it otherwise create it with the given data
+	void updateSortedServersZnode(SortedServers data) throws KeeperException, InterruptedException
+	{
+
+		Stat s = zk.exists(serversGlobalViewPath, false);
+		if(s==null)
+			zk.create(serversGlobalViewPath, data.toByteArray(), Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
+		else 
+			zk.setData(serversGlobalViewPath, data.toByteArray(), -1);	
+	}
+	
+	public SortedServers getSortedServers() throws InvalidProtocolBufferException, KeeperException, InterruptedException
+	{
+		return SortedServers.parseFrom(zk.getData(serversGlobalViewPath, null, null));
+	}
+	//---------------------------------------------------------------------------------------------------
+	
+	
+	public void printChildrenStat(String path) throws KeeperException, InterruptedException, InvalidProtocolBufferException
+	{
+		List<String> children = zk.getChildren(path, false);
+		System.out.println("Number of children:" + children.size() + "\n");
+
+		for(int i = 0 ; i < children.size(); i++)
+		{
+
+			System.out.println("\n------------CHILD------------\n" + children.get(i));
+
+			Stat stat = new Stat();
+			byte[] data = zk.getData(path+"/"+children.get(i), false, stat);
+
+			System.out.println( "No of bytes: " + data.length );
+
+			if(path == serverRootPath)
+			{
+				ServerData dataObject = ServerData.parseFrom(data);
+				System.out.print( "STAT: " + stat.toString() );
+				System.out.print( "DATA: " + dataObject.toString() );
+			}
+
+			if(path == ensembleRootPath)
+			{
+				EnsembleData dataObject = EnsembleData.parseFrom(data);
+				System.out.print( "STAT: " + stat.toString() );
+				System.out.print( "DATA: " + dataObject.toString() );
+			}
+		}
+
+	}
+
+
+
+	
+	public static void main(String[] args)
+	{
+		try {
+			ZookeeperClient zkCli = new ZookeeperClient(null);
+
+			List<ServerData> dataList = new ArrayList<ServerData>();
+
+			for(int i=0;i<101;i++)
+			{
+				int rndCapacity = new Random().nextInt(90) + 10;
+				int rndnameNode = new Random().nextInt(50000);
+				
+				ServerData.Builder data1 = ServerData.newBuilder();
+				data1.setCapacityLeft(rndCapacity);
+				data1.setSocketAddress("localhost"+ rndnameNode);
+				data1.setStat(ServerData.Status.ACCEPT_ENSEMBLE_REQUEST);
+
+				boolean created = zkCli.createServerZnode(  String.valueOf(rndnameNode), data1.build());
+				System.out.println(created);
+				Thread.sleep(100);
+			}
+
+			
+
+			zkCli.printChildrenStat(zkCli.serverRootPath);
+			zkCli.updateSortedServersZnode();
+			SortedServers sortedServers = zkCli.getSortedServers();
+
+			System.out.println("\n-----------------SORTED-----------------------\n");
+
+			List<ServerData> serverData = sortedServers.getSortedServersList();
+			List<Integer> leader = sortedServers.getLeaderIndexList();
+			System.out.println("No of Servers Sorted: "+ serverData.size());
+			for(ServerData sd: serverData)
+			{
+				System.out.print(sd.getCapacityLeft() + " ");
+			}
+			System.out.print("\n\n");
+			System.out.print(leader);
+
+			//System.out.print(zkOpt.getLocalInetSocket());
+
+		} catch (KeeperException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+	}
+
+}
+
