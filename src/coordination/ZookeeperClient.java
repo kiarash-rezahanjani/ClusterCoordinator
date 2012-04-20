@@ -6,11 +6,13 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
 import javax.xml.crypto.Data;
+
 
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
@@ -19,16 +21,18 @@ import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.Stat;
 
-import zookeeper.util.Znode.EnsembleData;
-import zookeeper.util.Znode.ServerData;
-import zookeeper.util.Znode.SortedServers;
+
+import utility.NetworkUtil;
+import utility.Znode.EnsembleData;
+import utility.Znode.ServerData;
+import utility.Znode.ServersGlobalView;
 
 
 import com.google.protobuf.InvalidProtocolBufferException;
 
 
 
-public class ZookeeperClient{
+public class ZookeeperClient implements Closeable{
 
 	static ZooKeeper zk = null;
 	String zkConnectionString = "localhost:2181";
@@ -76,29 +80,8 @@ public class ZookeeperClient{
 		} 
 	}
 	
-	public void close()
-	{
-		try {
-			zk.close();
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-	}
 
-	//just for TESTING purpose only
-	static String getLocalInetSocket()
-	{
-		int serverPort = 3339;
-		try {
-			return InetAddress.getLocalHost().getHostAddress() + ":" + serverPort;
-		} catch (UnknownHostException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
 
-		}
-		return null;
-	}
 
 	public String getMyServerZnodePath() {
 		return myServerZnodePath;
@@ -154,7 +137,7 @@ public class ZookeeperClient{
 	}
 	
 	//testing
-	public ServerData getServerZnodeData(String path) throws KeeperException, InterruptedException, InvalidProtocolBufferException
+	public ServerData getServerZnodeDatabyFullPath(String path) throws KeeperException, InterruptedException, InvalidProtocolBufferException
 	{
 		Stat s = new Stat();
 		byte[] data = zk.getData(path, false, s);
@@ -319,18 +302,38 @@ public class ZookeeperClient{
 		return sortedServers;
 	}
 	
+	void updateServersGlobalViewZnode(ServersGlobalView data) throws KeeperException, InterruptedException
+	{
+
+		Stat s = zk.exists(serversGlobalViewPath, false);
+		if(s==null)
+			zk.create(serversGlobalViewPath, data.toByteArray(), Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
+		else 
+			zk.setData(serversGlobalViewPath, data.toByteArray(), -1);	
+	}
+	
+	public ServersGlobalView getServersGlobalView() throws InvalidProtocolBufferException, KeeperException, InterruptedException
+	{
+		byte[] data = zk.getData(serversGlobalViewPath, null, null);
+		
+		if(data==null || data.length==0)
+			return null;
+		else
+			return ServersGlobalView.parseFrom(data);
+	}
+/*	
 	//update the sortedServers node with sortedServers and the index of the leaders, each leader is in charge of all nodes till next leader in the list
-	public void updateSortedServersZnode() throws InvalidProtocolBufferException, KeeperException, InterruptedException
+	public void updateServersGlobalViewZnode() throws InvalidProtocolBufferException, KeeperException, InterruptedException
 	{
 		List<ServerData> sortedServers = sortedServersList();
 		applyEliminationPolicy(sortedServers);
 		List<Integer> leaderIndexList = leaderIndexList(sortedServers);
 		
-		SortedServers.Builder data = SortedServers.newBuilder();
+		ServersGlobalView.Builder data = ServersGlobalView.newBuilder();
 		data.addAllSortedServers(sortedServers);
 		data.addAllLeaderIndex(leaderIndexList);
 		
-		updateSortedServersZnode(data.build());
+		updateServersGlobalViewZnode(data.build());
 	}
 
 	//implement the policy which server can participate i a chain
@@ -344,30 +347,17 @@ public class ZookeeperClient{
 		List<Integer> leaderIndexList = new ArrayList<Integer>();
 		
 		for(int i = 0; i < sortedServers.size(); i++)
-			if(i%3==0 /*&& sortedServers.size()-i>=3*/)
+			if(i%3==0) //&& sortedServers.size()-i>=3
 				leaderIndexList.add(i);
 			
 		return leaderIndexList;
 	}
 
 	//if node exist update it otherwise create it with the given data
-	void updateSortedServersZnode(SortedServers data) throws KeeperException, InterruptedException
-	{
 
-		Stat s = zk.exists(serversGlobalViewPath, false);
-		if(s==null)
-			zk.create(serversGlobalViewPath, data.toByteArray(), Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
-		else 
-			zk.setData(serversGlobalViewPath, data.toByteArray(), -1);	
-	}
-	
-	public SortedServers getSortedServers() throws InvalidProtocolBufferException, KeeperException, InterruptedException
-	{
-		return SortedServers.parseFrom(zk.getData(serversGlobalViewPath, null, null));
-	}
 	//---------------------------------------------------------------------------------------------------
 	
-	
+
 	public void printChildrenStat(String path) throws KeeperException, InterruptedException, InvalidProtocolBufferException
 	{
 		List<String> children = zk.getChildren(path, false);
@@ -427,9 +417,9 @@ public class ZookeeperClient{
 
 			
 
-			zkCli.printChildrenStat(zkCli.serverRootPath);
-			zkCli.updateSortedServersZnode();
-			SortedServers sortedServers = zkCli.getSortedServers();
+//			zkCli.printChildrenStat(zkCli.serverRootPath);
+//			zkCli.updateServersGlobalViewZnode();
+			ServersGlobalView sortedServers = zkCli.getServersGlobalView();
 
 			System.out.println("\n-----------------SORTED-----------------------\n");
 
@@ -457,6 +447,20 @@ public class ZookeeperClient{
 		}
 
 	}
+*/
 
+	@Override
+	public void close() throws IOException 
+	{
+		try {
+			zk.close();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
+
+	
 }
 

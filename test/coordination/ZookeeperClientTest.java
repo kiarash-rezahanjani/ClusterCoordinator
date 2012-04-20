@@ -14,9 +14,9 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import coordination.GlobalViewServer;
 import coordination.ZookeeperClient;
 
-import zookeeper.util.Znode.ServerData;
-import zookeeper.util.Znode.EnsembleData;
-import zookeeper.util.Znode.ServerData.Status;
+import utility.Znode.EnsembleData;
+import utility.Znode.ServerData;
+import utility.Znode.ServerData.Status;
 
 
 public class ZookeeperClientTest {
@@ -44,7 +44,7 @@ public class ZookeeperClientTest {
 		try {
 			ServerData dataWrite = data.build();
 			zkCli.createServerZnode(dataWrite);
-			ServerData dataRead = zkCli.getServerZnodeData(zkCli.getMyServerZnodePath());
+			ServerData dataRead = zkCli.getServerZnodeDatabyFullPath(zkCli.getMyServerZnodePath());
 			//assertTrue("Create Server Node test.",0==1);
 			print("Server Write:", dataWrite);
 			print("Server Read", dataRead );
@@ -81,7 +81,7 @@ public class ZookeeperClientTest {
 			
 			ServerData dataWrite = data.build();
 			zkCli.updateServerZnode(dataWrite);
-			ServerData dataRead = zkCli.getServerZnodeData(zkCli.getMyServerZnodePath());
+			ServerData dataRead = zkCli.getServerZnodeDatabyFullPath(zkCli.getMyServerZnodePath());
 			assertTrue("Update Server Node test.",dataWrite.equals(dataRead));
 			
 		} catch (KeeperException e) {

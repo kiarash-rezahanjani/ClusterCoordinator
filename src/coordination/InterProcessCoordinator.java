@@ -8,38 +8,73 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
 
+
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 
-import zookeeper.util.Znode.EnsembleData;
-import zookeeper.util.Znode.ServerData;
+import protocol.Protocol;
+
+
+import utility.NetworkUtil;
+import utility.Znode.EnsembleData;
+import utility.Znode.ServerData;
+import utility.Znode.ServersGlobalView;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class InterProcessCoordinator implements Runnable, Watcher {
+public class InterProcessCoordinator {
+
 
 	ZookeeperClient zkCli;
 	String mySocketAddress;
 	EventWatcher eventWatcher;
-	GlobalViewUpdator gvu;
 	ExecutorService executor;
 	//chains
-	SimpleEnsembleMap ensembleMap;
-	int totalLoadOfService ;
+	EnsemblesMetaData ensemblesMetaData;
+	Protocol protocol = new Protocol(this);
+	int totalLoad ;//later on replaced by an object containing cpu memory and bandwidth consumption
+	ServersGlobalView serversGlobalView;
+	short status = ServerStatus.ALL_FUNCTIONAL_ACCEPT_REQUEST;
     
 	//clients
-
+	//...
+	
 	//persistence
 	//...
+	
+	public short getStatus() {
+		return status;
+	}
 
+	public void setStatus(short status) {
+		this.status = status;
+	}
+	
+	public interface ServerStatus
+	{
+		short FORMING_ENSEMBLE_LEADER = 10; //request others to join the ensemble
+		short FORMING_ENSEMBLE_NOT_LEADER = 11; //being requested to join an ensemble
+		short BROKEN_ENSEMBLE = 12; //one of the ensemble that I am member of of is broken
+		short FIXING_ENSEMBLE_LEADER = 13; //the broken ensemble is being by my coordination
+		short FIXING_ENSEMBLE_NOT_LEADER = 14;//the broken ensemble is being fixed and I a listening for results from the leader	
+		short I_AM_LEAVING_ENSEMBLE = 15;//I leave ensemble and replace myself with another node
+		short A_MEMBER_LEAVING_ENSEMBLE = 16;//a member is leaving ensemble wait for new one
+		short ALL_FUNCTIONAL_REJECT_REQUEST = 17;	//all fine just server is saturated
+		short ALL_FUNCTIONAL_ACCEPT_REQUEST  = (short) ServerData.Status.ACCEPT_ENSEMBLE_REQUEST.getNumber();// all fine and I can also join a new ensemble
+	}
+	
 	public InterProcessCoordinator()
 	{
 		try {
 			mySocketAddress = NetworkUtil.getServerSocketAddress();
-			ensembleMap = new SimpleEnsembleMap(mySocketAddress);
+			ensemblesMetaData = new EnsemblesMetaData(mySocketAddress);
 			eventWatcher = new EventWatcher(this);
 			zkCli = new ZookeeperClient(eventWatcher);
 			zkCli.createServerZnode(getInitialServerData());
+			
 		}catch (UnknownHostException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -62,21 +97,26 @@ public class InterProcessCoordinator implements Runnable, Watcher {
 	ServerData getInitialServerData()
 	{
 		ServerData.Builder data = ServerData.newBuilder();
-		data.setCapacityLeft(new Random().nextInt(50));
+		data.setCapacityLeft(new Random().nextInt(100));
 		data.setSocketAddress(NetworkUtil.getServerSocketAddress());
 		data.setStat(ServerData.Status.ACCEPT_ENSEMBLE_REQUEST);
 		return data.build();
 	}
 
-	void startGlobalViewUpdater()
+	/**
+	 * This method is invoked when the server becomes in charge of updating the global view.
+	 */
+	public void startGlobalViewUpdater()
 	{
-	//	gvu = new Thread(new GlobalViewServer(zkCli, 3000));
-	//	gvu.start();
+		Executors.newSingleThreadExecutor();
+		executor.submit(new GlobalViewServer(zkCli, 3000)); 
+		//maybe we should create an ephemeral node
 	}
 	
-	void stopGlobalViewUpdater()
+	public void stopGlobalViewUpdater()
 	{
-	//	gvu.interrupt();
+		executor.shutdownNow();
+		//delete the ephemeral node
 	}
 	
 	public void setClientLoad(String clientIdentifier, int load)
@@ -90,12 +130,6 @@ public class InterProcessCoordinator implements Runnable, Watcher {
 		// -oldvalue +newvalue
 	}
 
-	@Override
-	public void process(WatchedEvent event) {
-		// TODO Auto-generated method stub
-
-
-	}
 //Forming chain----------
 	boolean sendJoinRequestTo(String socketAddress)
 	{
@@ -113,7 +147,7 @@ public class InterProcessCoordinator implements Runnable, Watcher {
 	}
 //Failure-------------------
 //--------------------------
-	@Override
+	//@Override
 	public void run() {
 		// TODO Auto-generated method stub
 

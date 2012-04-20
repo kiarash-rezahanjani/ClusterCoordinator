@@ -9,29 +9,24 @@ import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.data.Stat;
 
-import zookeeper.util.Znode.ServerData;
-import zookeeper.util.Znode.SortedServers;
+import utility.Znode.ServerData;
+import utility.Znode.ServersGlobalView;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 
-public class GlobalViewServer //implements Runnable
+public class GlobalViewServer implements Runnable
 {
 
 	ZookeeperClient zkCli;
 	int timeInterval = 2000;
 	//volatile boolean terminate = false;
 
-	public GlobalViewServer(ZookeeperClient zkCli, int timeInterval)
+	public GlobalViewServer(ZookeeperClient zkCli, int updateTimeInterval)
 	{
 		this.zkCli=zkCli;
 		this.timeInterval = timeInterval;
 	}
-	/*
-	public void stopNow()
-	{
-		terminate = true;
-	}
-	 */
+
 	//sort all the servers based on the capacity left using insertion sort, those with max capacity come in the beginning
 	List<ServerData> sortedServersList() throws KeeperException, InterruptedException, InvalidProtocolBufferException
 	{
@@ -61,9 +56,18 @@ public class GlobalViewServer //implements Runnable
 		return sortedServers;
 	}
 
-	//implement the policy which server can participate i a chain
+	//implement the policy of which servers can participate in a chain. Remove those that do not accept ensemble request.
 	void applyEliminationPolicy(List<ServerData> sortedServers)
 	{
+		for(int i=0; i<sortedServers.size(); i++)
+		{
+			if(sortedServers.get(i).getStat() != ServerData.Status.ACCEPT_ENSEMBLE_REQUEST)
+			{	
+				sortedServers.remove(i);
+				i--;
+			}
+			
+		}
 
 	}
 
@@ -80,27 +84,27 @@ public class GlobalViewServer //implements Runnable
 	}
 
 	//update the sortedServers node with sortedServers and the index of the leaders, each leader is in charge of all nodes till next leader in the list
-	public void updateSortedServersZnode() throws InvalidProtocolBufferException, KeeperException, InterruptedException
+	public void updateServersGlobalViewZnode() throws InvalidProtocolBufferException, KeeperException, InterruptedException
 	{
 		List<ServerData> sortedServers = sortedServersList();
 		applyEliminationPolicy(sortedServers);
 		List<Integer> leaderIndexList = leaderIndexList(sortedServers);
 
-		SortedServers.Builder data = SortedServers.newBuilder();
+		ServersGlobalView.Builder data = ServersGlobalView.newBuilder();
 		data.addAllSortedServers(sortedServers);
 		data.addAllLeaderIndex(leaderIndexList);
 
-		zkCli.updateSortedServersZnode(data.build());
+		zkCli.updateServersGlobalViewZnode(data.build());
 	}
 
 //	@Override
-	public void run1() 
+	public void run() 
 	{
 		while(true)
 		{
 			try 
 			{
-				updateSortedServersZnode();
+				updateServersGlobalViewZnode();
 				Thread.sleep(timeInterval);
 			} catch (InvalidProtocolBufferException e) 
 			{
@@ -112,7 +116,7 @@ public class GlobalViewServer //implements Runnable
 				e.printStackTrace();
 			} catch (InterruptedException e) 
 			{
-				throw new RuntimeException("Global view updater Thread Terminated.");
+				throw new RuntimeException("Global View Task terminated!");
 				// TODO Auto-generated catch block
 			}
 		}	

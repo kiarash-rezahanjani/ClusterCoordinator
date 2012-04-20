@@ -5,6 +5,8 @@ import static org.junit.Assert.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import org.apache.zookeeper.KeeperException;
 import org.junit.AfterClass;
@@ -13,18 +15,20 @@ import org.junit.Test;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 
-import zookeeper.util.Znode.ServerData;
-import zookeeper.util.Znode.SortedServers;
+import utility.Znode.ServerData;
+import utility.Znode.ServersGlobalView;
 
 public class GlobalViewServerTest {
 
 	static ZookeeperClient zkCli;
 	static GlobalViewServer gvs;
+
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		System.out.print("GlobalViewServerTest JUNIT TEST STARTED...");
 		zkCli = new ZookeeperClient(null);
 		gvs = new GlobalViewServer(zkCli, 2000);
+
 	}
 	
 	@Test
@@ -62,14 +66,14 @@ public class GlobalViewServerTest {
 		
 		
 		try {
-			gvs.updateSortedServersZnode();
-			SortedServers sortedServer = zkCli.getSortedServers();
+			gvs.updateServersGlobalViewZnode();
+			ServersGlobalView sortedServer = zkCli.getServersGlobalView();
 			sortedServerList = sortedServer.getSortedServersList();
 			
 			//if the size not equal
 			if(serverList.size()!=sortedServerList.size())
 				testResult=false;
-			
+		
 			for(int i = 0; i<sortedServerList.size();i++)
 			{
 				//elements of the list are not properly sorted
@@ -102,6 +106,7 @@ public class GlobalViewServerTest {
 	public static void tearDownAfterClass() throws Exception {
 		zkCli.close();
 		gvs=null;
+
 	}
 
 
