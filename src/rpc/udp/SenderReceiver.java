@@ -2,10 +2,11 @@ package rpc.udp;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.List;
 
 import protocol.ReceivedMessageCallBack;
 
-
+//later work: catch exceptions and retry mechanism
 public class SenderReceiver 
 {
 	private ReceivedMessageCallBack callback;
@@ -53,6 +54,18 @@ public class SenderReceiver
 			}
 	}
 	
+	public void broadcast(List<InetSocketAddress> destinations, Object message)
+	{
+		for(InetSocketAddress destination:destinations)
+			try {
+				sender.sendAsyncMessage(destination, message);
+		//		break;
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+	}
+	
 	public void send(String hostAddress, int port, Object message)
 	{
 		send(new InetSocketAddress(hostAddress, port ), message);
@@ -63,6 +76,5 @@ public class SenderReceiver
 		sender.stop();
 		receiver.stop();
 	}
-
 
 }

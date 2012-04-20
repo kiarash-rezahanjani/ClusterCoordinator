@@ -73,6 +73,7 @@ public final class UdpServer {
                 running = false;
                 
                 System.out.println("server(Port:"+ port +") stopped");
+                System.exit(0);
         }
         
         public boolean isRunning() {

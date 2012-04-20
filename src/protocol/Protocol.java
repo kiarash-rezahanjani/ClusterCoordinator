@@ -4,6 +4,7 @@ import java.net.InetSocketAddress;
 import coordination.InterProcessCoordinator;
 import coordination.InterProcessCoordinator.ServerStatus;
 import rpc.udp.SenderReceiver;
+import utility.Znode.ServerData;
 
 public class Protocol implements ReceivedMessageCallBack {
 
@@ -13,13 +14,15 @@ public class Protocol implements ReceivedMessageCallBack {
 	public Protocol(InterProcessCoordinator interProcessCoordinator) 
 	{
 		// TODO Auto-generated constructor stub
+		senderReceiver = new SenderReceiver(this);
 		this.cdrHandle = interProcessCoordinator;
 
 	}
 
-	public Protocol(InterProcessCoordinator interProcessCoordinator, int port) 
+	public Protocol(InterProcessCoordinator interProcessCoordinator, int receiverServerport) 
 	{
 		// TODO Auto-generated constructor stub
+		senderReceiver = new SenderReceiver(this, receiverServerport);
 		this.cdrHandle = interProcessCoordinator;
 	}
 
@@ -27,30 +30,102 @@ public class Protocol implements ReceivedMessageCallBack {
 	public void received(Object msg, InetSocketAddress srcSocketAddress) {
 		// TODO Auto-generated method stub
 
+		ProtocolMessage message = (ProtocolMessage)msg;
+
+
 	}
 
-	synchronized void processServerStatus()
+	void processServerStatus(ProtocolMessage message)
 	{
-		switch(cdrHandle.getStatus())
+		//		Short s =cdrHandle.getStatus();
+		Short statusHandle = cdrHandle.getStatusHandle();
+		short msgType = message.getMessageType();
+		
+		synchronized(statusHandle)
 		{
-		case ServerStatus.FORMING_ENSEMBLE_LEADER:
-			break;
-		case ServerStatus.FORMING_ENSEMBLE_NOT_LEADER:
-			break;
-		case ServerStatus.BROKEN_ENSEMBLE: 
-			break;
-		case ServerStatus.FIXING_ENSEMBLE_LEADER:
-			break;
-		case ServerStatus.FIXING_ENSEMBLE_NOT_LEADER: 
-			break;
-		case ServerStatus.I_AM_LEAVING_ENSEMBLE:
-			break;
-		case ServerStatus.A_MEMBER_LEAVING_ENSEMBLE:
-			break;
-		case ServerStatus.ALL_FUNCTIONAL_REJECT_REQUEST: 
-			break;
-		default:
-		}
+			switch(statusHandle.shortValue())
+			{
+	 
+			case ServerStatus.ALL_FUNCTIONAL_ACCEPT_REQUEST:
+				if(message.getMessageType()==MessageType.JOIN_ENSEMBLE_REQUEST )
+					;
+			//	if(message.getMessageType() == MessageType.LEAVING_ENSEMBLE)
+			//		;
+				break;
+				//======================================================================================
+			case ServerStatus.FORMING_ENSEMBLE_LEADER_STARTED: 
 
+				break;
+				//======================================================================================
+			case ServerStatus.FORMING_ENSEMBLE_LEADER_WAIT_FOR_ACCEPT: 
+				if(message.getMessageType()==MessageType.ACCEPTED_JOIN_ENSEMBLE_REQUEST )
+					;
+				
+				if(message.getMessageType()==MessageType.REJECTED_JOIN_ENSEMBLE_REQUEST )
+					;
+				break;
+			//======================================================================================
+			case ServerStatus.FORMING_ENSEMBLE_LEADER_WAIT_FOR_CONNECTED_SIGNAL: 
+				if(message.getMessageType()==MessageType.SUCEEDED_ENSEMBLE_CONNECTION )
+					;
+				if(message.getMessageType()==MessageType.FAILED_ENSEMBLE_CONNECTION )
+					;
+				break;
+			//======================================================================================
+			case ServerStatus.FORMING_ENSEMBLE_LEADER_EXEC_ROLL_BACK: 
+				if(message.getMessageType()==MessageType.OPERATION_FAILED )
+					;
+				
+				break;
+			//======================================================================================
+			case ServerStatus.FORMING_ENSEMBLE_NOT_LEADER_STARTED: 
+				if(message.getMessageType()==MessageType.START_ENSEMBLE_CONNECTION )
+					;
+				break;
+				//======================================================================================
+			case ServerStatus.FORMING_ENSEMBLE_NOT_LEADER_CONNECTING: 
+				if(message.getMessageType()==MessageType.START_SERVICE )
+					;
+				break;
+			//======================================================================================
+			case ServerStatus.FORMING_ENSEMBLE_NOT_LEADER_WAIT_FOR_START_SIGNAL: 
+				if(message.getMessageType()==MessageType.START_ENSEMBLE_CONNECTION)
+					;
+				break;		
+			//======================================================================================
+			case ServerStatus.FORMING_ENSEMBLE_NOT_LEADER_ROLL_BACK_ALL_OPERATIONS: 
+				if(message.getMessageType()==MessageType.OPERATION_FAILED)
+					;
+				break;
+			//=======================DONE LATER===============================================================
+			case ServerStatus.BROKEN_ENSEMBLE: 
+
+				break; 
+			//======================================================================================
+			case ServerStatus.BROKEN_ENSEMBLE_FINDING_REPLACEMENT: break;
+			//======================================================================================
+			case ServerStatus.FIXING_ENSEMBLE_LEADER_WAIT_FOR_ACCEPT: break;
+			//======================================================================================
+			case ServerStatus.FIXING_ENSEMBLE_LEADER_WAIT_FOR_CONNECTED_SIGNAL: break;
+			//======================================================================================
+
+			case ServerStatus.FIXING_ENSEMBLE_NOT_LEADER_CONNECTING: break;
+			//======================================================================================
+			case ServerStatus.FIXING_ENSEMBLE_NOT_LEADER_WAIT_FOR_START_SIGNAL: break;
+			//======================================================================================
+
+			/*
+			//later to be completed
+			case I_AM_LEAVING_ENSEMBLE;
+			case A_MEMBER_LEAVING_ENSEMBLE;
+			case ALL_FUNCTIONAL_REJECT_REQUEST;
+			case ALL_FUNCTIONAL_ACCEPT_REQUEST;
+			 */
+
+			//default: 
+				
+			}
+		}
 	}
+
 }

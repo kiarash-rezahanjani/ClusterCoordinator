@@ -58,8 +58,8 @@ public final class UdpClient {
 			@Override
 			public void operationComplete(ChannelFuture cf) throws Exception {
 			
-				if(cf.isSuccess())
-					System.out.println("Message sent! ID:"+ ((ProtocolMessage) message).getMsgId());
+				if(cf.isSuccess());
+			//		System.out.println("Message sent! ID:"+ ((ProtocolMessage) message).getMsgId());
 				else
 				{
 					System.out.println("Message failed! ID:"+ ((ProtocolMessage) message).getMsgId());
@@ -74,7 +74,9 @@ public final class UdpClient {
 	public void stop() {
 		channel.close();
 		factory.releaseExternalResources();
+		bootstrap.releaseExternalResources();
 		System.out.println("Client(Port:"+ clientSocketAddress.getPort() +") Stopped!");
+		System.exit(0);
 	}
 
 }
