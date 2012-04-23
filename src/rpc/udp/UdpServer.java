@@ -22,6 +22,7 @@ public final class UdpServer {
         private int port;
         
         private ChannelFactory factory;
+        
         private ConnectionlessBootstrap bootstrap;
         
         private volatile boolean running = false;
@@ -31,6 +32,8 @@ public final class UdpServer {
         private Channel serverChannel;
         
         private ReceivedMessageCallBack callback;
+        
+        //private InetSocketAddress serverSocketAddres;
         
         public UdpServer(ReceivedMessageCallBack callback) {
                 this(DEFAULT_PORT, callback);
@@ -64,7 +67,7 @@ public final class UdpServer {
         }
         
         public void stop() {
-                System.out.println("stopping UDP server");
+                System.out.println("stopping UDP server..");
                 
                 serverChannel.close();
 //              factory.releaseExternalResources();
@@ -74,6 +77,13 @@ public final class UdpServer {
                 
                 System.out.println("server(Port:"+ port +") stopped");
                 System.exit(0);
+        }
+        
+        public InetSocketAddress getServerSocketAddress()
+        {
+        	//for testing
+        	return (new InetSocketAddress("localhost", port));
+        	//return (InetSocketAddress) serverChannel.getLocalAddress();
         }
         
         public boolean isRunning() {

@@ -1,13 +1,15 @@
 package rpc.udp;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.List;
+import protocol.AbstractMessage;
 
 import protocol.ReceivedMessageCallBack;
 
 //later work: catch exceptions and retry mechanism
-public class SenderReceiver 
+public class SenderReceiver implements Closeable
 {
 	private ReceivedMessageCallBack callback;
 
@@ -45,34 +47,35 @@ public class SenderReceiver
 	public void send(InetSocketAddress destination, Object message)
 	{
 		//for(int i=0; i<2; i++)
-			try {
-				sender.sendAsyncMessage(destination, message);
-		//		break;
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+		try {
+			((AbstractMessage)message).setSrcSocketAddress(receiver.getServerSocketAddress());
+			//System.out.println("Message sent with rece: "+receiver.getServerSocketAddress());
+			sender.sendAsyncMessage(destination, message);
+			//		break;
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
-	
+
 	public void broadcast(List<InetSocketAddress> destinations, Object message)
 	{
 		for(InetSocketAddress destination:destinations)
-			try {
-				sender.sendAsyncMessage(destination, message);
+			send(destination, message);
+		
+		//sender.sendAsyncMessage(destination, message);
 		//		break;
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+
 	}
-	
+
 	public void send(String hostAddress, int port, Object message)
 	{
 		send(new InetSocketAddress(hostAddress, port ), message);
 	}
-	
-	public void close()
-	{
+
+	@Override
+	public void close() throws IOException {
+		// TODO Auto-generated method stub
 		sender.stop();
 		receiver.stop();
 	}

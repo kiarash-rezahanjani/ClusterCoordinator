@@ -1,6 +1,7 @@
 package protocol;
 
 import java.io.Serializable;
+import java.net.InetSocketAddress;
 
 public final class ProtocolMessage extends AbstractMessage{
 
@@ -10,6 +11,13 @@ public final class ProtocolMessage extends AbstractMessage{
 	Object msgContent;
 	
 	public ProtocolMessage(short msgType , Object msgContent ) 
+	{
+		super(IDGenerator.getNextId());
+		this.msgType = msgType;
+		this.msgContent = msgContent;
+	}
+	
+	public ProtocolMessage(short msgType , Object msgContent, InetSocketAddress srcSocketAddress ) 
 	{
 		super(IDGenerator.getNextId());
 		this.msgType = msgType;

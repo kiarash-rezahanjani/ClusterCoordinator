@@ -1,10 +1,12 @@
 package protocol;
 
 import java.io.Serializable;
+import java.net.InetSocketAddress;
 
 public abstract class AbstractMessage  implements Serializable{
 	
 	long msgId;
+	InetSocketAddress srcSocketAddress;
 	
 	public AbstractMessage(long msgId)
 	{
@@ -19,8 +21,11 @@ public abstract class AbstractMessage  implements Serializable{
 		this.msgId = msgId;
 	}
 
+	public InetSocketAddress getSrcSocketAddress() {
+		return srcSocketAddress;
+	}
 
-	
-	
-
+	public void setSrcSocketAddress(InetSocketAddress srcSocketAddress) {
+		this.srcSocketAddress = srcSocketAddress;
+	}
 }

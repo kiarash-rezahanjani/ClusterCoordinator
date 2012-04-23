@@ -1,8 +1,12 @@
 package protocol;
 import java.net.InetSocketAddress;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 public class LeaderBookKeeper {
 	private int ensembleSize = 3;
@@ -13,17 +17,20 @@ public class LeaderBookKeeper {
 	private HashMap<InetSocketAddress, Boolean> requestedNodeList 
 	= new HashMap<InetSocketAddress, Boolean>();
 	
-	private HashMap<InetSocketAddress, Boolean> accpetedNodeList 
+	private HashMap<InetSocketAddress, Boolean> acceptedNodeList 
 	= new HashMap<InetSocketAddress, Boolean>();
 	
 	private HashMap<InetSocketAddress, Boolean> connectedNodeList 
 	= new HashMap<InetSocketAddress, Boolean>();
-
-
 	
 	public LeaderBookKeeper(int ensembleSize)
 	{
 		this.ensembleSize=ensembleSize;
+	}
+	
+	public LeaderBookKeeper()
+	{
+		this.ensembleSize=3;
 	}
 	
 	public void clear()
@@ -31,13 +38,18 @@ public class LeaderBookKeeper {
 		ensembleSize = 3;
 		candidateSet.clear();
 		requestedNodeList.clear();
-		accpetedNodeList.clear();
+		acceptedNodeList.clear();
 		connectedNodeList.clear();
 	}
 	
 	public void setEnsembleSize(int size)
 	{
 		ensembleSize = size;
+	}
+	
+	public void addCandidateList(Collection<InetSocketAddress> candidates)
+	{
+		candidateSet.addAll(candidates);
 	}
 	
 	public void addCandidate(InetSocketAddress sa)
@@ -50,21 +62,70 @@ public class LeaderBookKeeper {
 		requestedNodeList.put(sa, confirmed);
 	}
 	
-	public void putAccpetedNode(InetSocketAddress sa, Boolean confirmed)
+	public void putAcceptedNode(InetSocketAddress sa, Boolean confirmed)
 	{
-		requestedNodeList.put(sa, confirmed);
-		
-		
+		acceptedNodeList.put(sa, confirmed);
 	}
 	
-	public boolean isAcceptedComplete(Collection<Boolean> values)
+	void putConnectedNode(InetSocketAddress sa, Boolean confirmed)
 	{
-		return isComplete(values);
+		connectedNodeList.put(sa, confirmed);
 	}
 	
-	public boolean isConnectedComplete(Collection<Boolean> values)
+	public List<InetSocketAddress> getAcceptedList()
+	{//HashMap<InetSocketAddress, Boolean>
+		List<InetSocketAddress> list = new ArrayList<InetSocketAddress>();
+		Iterator it = acceptedNodeList.entrySet().iterator();
+		while(it.hasNext())
+		{
+			Map.Entry<InetSocketAddress, Boolean> entry = (Map.Entry<InetSocketAddress, Boolean>)it.next();
+			if(entry.getValue().booleanValue()==true)
+			{
+				list.add(entry.getKey());
+			}
+		}
+		return list;
+	}
+	
+//-----------
+	
+	public void removeCandidate(InetSocketAddress sa)
 	{
-		return isComplete(values);
+		candidateSet.remove(sa);
+	}
+	
+	public void removeRequestedNode(InetSocketAddress sa)
+	{
+		requestedNodeList.remove(sa);
+	}
+	
+	public void removeAcceptedNode(InetSocketAddress sa)
+	{
+		acceptedNodeList.remove(sa);
+	}
+	
+	public void removeConnectedNode(InetSocketAddress sa)
+	{
+		connectedNodeList.remove(sa);
+	}
+	
+	public boolean isEmpty()
+	{
+		if(candidateSet.isEmpty() && requestedNodeList.isEmpty() 
+				&& acceptedNodeList.isEmpty() && connectedNodeList.isEmpty())
+			return true;
+		else
+			return false;
+	}
+//----------------
+	public boolean isAcceptedComplete()
+	{
+		return isComplete(acceptedNodeList.values());
+	}
+	
+	public boolean isConnectedComplete()
+	{
+		return isComplete(connectedNodeList.values());
 	}
 	
 	boolean isComplete(Collection<Boolean> values)
@@ -77,7 +138,7 @@ public class LeaderBookKeeper {
 			if(value.booleanValue()==true)
 				count++;
 			
-			if(count >= ensembleSize)
+			if(count >= ensembleSize-1)
 			{
 				complete = true;
 				break;
@@ -85,34 +146,8 @@ public class LeaderBookKeeper {
 		}
 		return complete;
 	}
+	//-------------------------------
 	
-	void putConnectedNode(InetSocketAddress sa, Boolean confirmed)
-	{
-		requestedNodeList.put(sa, confirmed);
-	}
-	
-//-----------
-	
-	public void removeCandidate(InetSocketAddress sa)
-	{
-		candidateSet.add(sa);
-	}
-	
-	public void removeRequestedNode(InetSocketAddress sa)
-	{
-		requestedNodeList.remove(sa);
-	}
-	
-	public void removeAccpetedNode(InetSocketAddress sa)
-	{
-		requestedNodeList.remove(sa);
-	}
-	
-	public void removeConnectedNode(InetSocketAddress sa)
-	{
-		requestedNodeList.remove(sa);
-	}
-//----------------
 	
 	
 }
