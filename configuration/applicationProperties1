@@ -1,0 +1,2 @@
+protocol_port = 7777
+buffer_server_port = 8888
