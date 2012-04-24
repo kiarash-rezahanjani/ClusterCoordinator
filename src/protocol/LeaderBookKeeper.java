@@ -87,6 +87,21 @@ public class LeaderBookKeeper {
 		return list;
 	}
 	
+	public List<InetSocketAddress> getConnectedList()
+	{//HashMap<InetSocketAddress, Boolean>
+		List<InetSocketAddress> list = new ArrayList<InetSocketAddress>();
+		Iterator it = connectedNodeList.entrySet().iterator();
+		while(it.hasNext())
+		{
+			Map.Entry<InetSocketAddress, Boolean> entry = (Map.Entry<InetSocketAddress, Boolean>)it.next();
+			if(entry.getValue().booleanValue()==true)
+			{
+				list.add(entry.getKey());
+			}
+		}
+		return list;
+	}
+	
 //-----------
 	
 	public void removeCandidate(InetSocketAddress sa)

@@ -5,7 +5,7 @@ import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.List;
 
-import zookeeper.util.Znode.EnsembleData;
+import utility.Znode.EnsembleData;
 
 public class SimpleEnsembleMap {
 

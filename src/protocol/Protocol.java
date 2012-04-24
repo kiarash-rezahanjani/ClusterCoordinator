@@ -55,7 +55,7 @@ public class Protocol implements ReceivedMessageCallBack {
 
 	void processMessage(ProtocolMessage message)
 	{
-		System.out.println("OOOO");
+		//System.out.println("OOOO");
 		//		Short s =cdrHandle.getStatus();
 		InterProcessCoordinator.Status statusHandle = cdrHandle.getStatusHandle();
 		short msgType = message.getMessageType();
@@ -70,8 +70,8 @@ public class Protocol implements ReceivedMessageCallBack {
 				if(message.getMessageType()==MessageType.JOIN_ENSEMBLE_REQUEST )
 				{
 					printStatus();
-					acceptJoinRequest(srcSocketAddress);
 					statusHandle.setStatus(ServerStatus.FORMING_ENSEMBLE_NOT_LEADER_STARTED);
+					acceptJoinRequest(srcSocketAddress);
 					printStatus();
 				}
 				//	if(message.getMessageType() == MessageType.LEAVING_ENSEMBLE)
@@ -83,28 +83,18 @@ public class Protocol implements ReceivedMessageCallBack {
 				break;
 				//======================================================================================
 			case ServerStatus.FORMING_ENSEMBLE_LEADER_WAIT_FOR_ACCEPT: 
+				printStatus();
+				leaderProcessWaitForAccept( message, statusHandle);
+				printStatus();
 
-				if(message.getMessageType()==MessageType.ACCEPTED_JOIN_ENSEMBLE_REQUEST )
-				{
-					printStatus();
-					leaderProcessWaitForAccept( message, statusHandle);
-					printStatus();
-				}
 
-				if(message.getMessageType()==MessageType.REJECTED_JOIN_ENSEMBLE_REQUEST )
-					;
 				break;
 				//======================================================================================
 			case ServerStatus.FORMING_ENSEMBLE_LEADER_WAIT_FOR_CONNECTED_SIGNAL: 
-				if(message.getMessageType()==MessageType.SUCEEDED_ENSEMBLE_CONNECTION )
-				{
-					printStatus();
-					startServiceSignal(srcSocketAddress);
-					statusHandle.setStatus(ServerStatus.ALL_FUNCTIONAL_ACCEPT_REQUEST);// need to check if there is enough capacity left
-					printStatus();
-				}
-				if(message.getMessageType()==MessageType.FAILED_ENSEMBLE_CONNECTION )
-					;
+				printStatus();
+				leaderWaitForConnectedSignal(message, statusHandle);
+				printStatus();
+
 				break;
 				//======================================================================================
 			case ServerStatus.FORMING_ENSEMBLE_LEADER_EXEC_ROLL_BACK: 
@@ -116,7 +106,9 @@ public class Protocol implements ReceivedMessageCallBack {
 			case ServerStatus.FORMING_ENSEMBLE_NOT_LEADER_STARTED: 
 				if(message.getMessageType()==MessageType.START_ENSEMBLE_CONNECTION )
 				{
+					statusHandle.setStatus(ServerStatus.FORMING_ENSEMBLE_NOT_LEADER_CONNECTING);
 					printStatus();
+					System.out.println(  message.msgContent );
 					iamConnectedSignal(srcSocketAddress);
 					statusHandle.setStatus(ServerStatus.FORMING_ENSEMBLE_NOT_LEADER_WAIT_FOR_START_SIGNAL);// need to check if there is enough capacity left
 					printStatus();
@@ -137,7 +129,7 @@ public class Protocol implements ReceivedMessageCallBack {
 					//iamConnectedSignal(srcSocketAddress);
 					//	List<InetSocketAddress> sa = (ArrayList<InetSocketAddress>) message.msgContent;
 					//	for(InetSocketAddress elm : sa)
-					System.out.println(  message.msgContent );
+					//System.out.println(  message.msgContent );
 
 					statusHandle.setStatus(ServerStatus.ALL_FUNCTIONAL_ACCEPT_REQUEST);// need to check if there is enough capacity left
 					printStatus();
@@ -182,41 +174,44 @@ public class Protocol implements ReceivedMessageCallBack {
 	}
 	//------------------------------------------LEADER----------------------------------------
 	void leaderStartsFormingEnsemble(int replicationFactor)
-	{printStatus();
-	Status status = cdrHandle.getStatusHandle();
-	synchronized(status)
-	{printStatus();
-	if(status.getStatus()!=ServerStatus.ALL_FUNCTIONAL_ACCEPT_REQUEST  
-			&& status.getStatus()!=ServerStatus.FORMING_ENSEMBLE_LEADER_STARTED )
 	{
-		System.out.println("Formin ensemble while status.getStatus()!=ServerStatus.ALL_FUNCTIONAL_ACCEPT_REQUEST . ");
-		System.exit(-1);
-	}
+		
+		Status status = cdrHandle.getStatusHandle();
 
-	if(!lbk.isEmpty())
-	{
-		System.out.println("An attemp is made to form ensemble and Leaderbook Keeper is not empty. ");
-		System.exit(-1);
-	}
+		synchronized(status)
+		{
+			printStatus();
+			if(status.getStatus()!=ServerStatus.ALL_FUNCTIONAL_ACCEPT_REQUEST  
+					&& status.getStatus()!=ServerStatus.FORMING_ENSEMBLE_LEADER_STARTED )
+			{
+				System.out.println("Formin ensemble while status.getStatus()!=ServerStatus.ALL_FUNCTIONAL_ACCEPT_REQUEST . ");
+				System.exit(-1);
+			}
 
-	List<InetSocketAddress> candidates = cdrHandle.getSortedCandidates();//get candidates
-	if(candidates.size()<replicationFactor-1)
-	{
-		System.out.println("candidates.size() < replicationFactor");
-		System.exit(-1);
-	}
+			if(!lbk.isEmpty())
+			{
+				System.out.println("An attemp is made to form ensemble and Leaderbook Keeper is not empty. ");
+				System.exit(-1);
+			}
 
-	lbk.setEnsembleSize(replicationFactor);
-	lbk.addCandidateList(candidates);
+			List<InetSocketAddress> candidates = cdrHandle.getSortedCandidates();//get candidates
+			if(candidates.size()<replicationFactor-1)
+			{
+				System.out.println("candidates.size() < replicationFactor");
+				System.exit(-1);
+			}
 
-	status.setStatus(ServerStatus.FORMING_ENSEMBLE_LEADER_WAIT_FOR_ACCEPT);
-	//-1 : leader is also part of the chain
-	for(int i=0 ; i<replicationFactor-1; i++)
-	{
-		joinRequest(candidates.get(i));
-		lbk.putRequestedNode(candidates.get(i), false);
-	}
-	}
+			lbk.setEnsembleSize(replicationFactor);
+			lbk.addCandidateList(candidates);
+
+			status.setStatus(ServerStatus.FORMING_ENSEMBLE_LEADER_WAIT_FOR_ACCEPT);
+			//-1 : leader is also part of the chain
+			for(int i=0 ; i<replicationFactor-1; i++)
+			{
+				joinRequest(candidates.get(i));
+				lbk.putRequestedNode(candidates.get(i), false);
+			}
+		}
 	}
 
 	void leaderProcessWaitForAccept(ProtocolMessage message, Status status)
@@ -227,7 +222,7 @@ public class Protocol implements ReceivedMessageCallBack {
 
 			if(lbk.isAcceptedComplete())
 			{
-				status.setStatus(ServerStatus.FORMING_ENSEMBLE_LEADER_WAIT_FOR_CONNECTED_SIGNAL);
+				status.setStatus(ServerStatus.FORMING_ENSEMBLE_LEADER_WAIT_FOR_CONNECTED_SIGNAL);// need to check if there is enough capacity left
 
 				List<InetSocketAddress> listOfEnsembleServers = new ArrayList<InetSocketAddress>();
 				listOfEnsembleServers.addAll(lbk.getAcceptedList());
@@ -242,6 +237,32 @@ public class Protocol implements ReceivedMessageCallBack {
 
 		if(message.getMessageType()== MessageType.REJECTED_JOIN_ENSEMBLE_REQUEST)
 			lbk.putAcceptedNode(message.getSrcSocketAddress(), false);
+
+	}
+
+
+	void leaderWaitForConnectedSignal(ProtocolMessage message, Status status)
+	{
+	
+		if(message.getMessageType()== MessageType.SUCEEDED_ENSEMBLE_CONNECTION)
+		{
+			lbk.putConnectedNode(message.getSrcSocketAddress(), true);
+
+			if(lbk.isConnectedComplete())
+			{
+				status.setStatus(ServerStatus.ALL_FUNCTIONAL_ACCEPT_REQUEST);
+
+				for(InetSocketAddress sa : lbk.getConnectedList())
+				{
+					startServiceSignal(sa);
+				    //System.out.println("sending start sig to:"+ sa.toString());
+				}
+			}
+
+		}
+
+		if(message.getMessageType()== MessageType.FAILED_ENSEMBLE_CONNECTION)
+			lbk.putConnectedNode(message.getSrcSocketAddress(), false);
 
 	}
 	//-------------------------------------------Follower----------------------------------	
@@ -289,7 +310,7 @@ public class Protocol implements ReceivedMessageCallBack {
 
 	void printStatus()
 	{
-		System.out.println("Leader:" + leader + " Status:" + cdrHandle.getStatusHandle().getStatus());
+		System.out.println("Me:" + senderReceiver.getServerSocketAddress()+ " Leader:" + leader + " Status:" + cdrHandle.getStatusHandle().getStatus());
 	}
 
 }
