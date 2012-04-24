@@ -109,8 +109,14 @@ public class Test {
 			}
 		}
 
-		sr1.close();
-		sr2.close();
+		try {
+			sr1.close();
+			sr2.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 	}
 
 	public static void main(String[] args) {

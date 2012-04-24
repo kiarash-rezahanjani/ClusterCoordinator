@@ -1,6 +1,6 @@
 package serialization;
 
-option java_package = "zookeeper.util";
+option java_package = "utility";
 option java_outer_classname = "Znode";
 
 message ServerData {
@@ -18,7 +18,7 @@ message ServerData {
 
  }
  
-message SortedServers
+message ServersGlobalView
 {
 	repeated ServerData sortedServers = 1;
 	repeated int32 leaderIndex = 2;
