@@ -82,7 +82,7 @@ public final class UdpServer {
         public InetSocketAddress getServerSocketAddress()
         {
         	//for testing
-        	return (new InetSocketAddress("localhost", port));
+        	return (new InetSocketAddress(port));
         	//return (InetSocketAddress) serverChannel.getLocalAddress();
         }
         

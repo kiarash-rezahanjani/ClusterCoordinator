@@ -5,18 +5,21 @@ import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.List;
 
+import utility.Configuration;
 import utility.Znode.EnsembleData;
 
 public class EnsemblesMetaData {
 
+	Configuration config;
 	HashMap<String, String> serverToEnsemble = new HashMap<String, String>();
 	HashMap<String, EnsembleData> ensembleToData = new HashMap<String, EnsembleData>();
 	List<String> leaderOfEnsembles = new ArrayList<String>();
 	String mySocketAddress;
+	
 
-	public EnsemblesMetaData(String socketAddress)
+	public EnsemblesMetaData(Configuration config)
 	{
-		mySocketAddress = socketAddress;
+		this.config = config;
 	}
 
 	/**

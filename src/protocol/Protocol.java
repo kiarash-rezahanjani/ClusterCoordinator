@@ -22,29 +22,23 @@ public class Protocol implements ReceivedMessageCallBack {
 	public Protocol(InterProcessCoordinator interProcessCoordinator) 
 	{
 		// TODO Auto-generated constructor stub
-		senderReceiver = new SenderReceiver(this);
+		
 		this.cdrHandle = interProcessCoordinator;
-
-	}
-
-	public Protocol(InterProcessCoordinator interProcessCoordinator, int receiverServerport) 
-	{
-		// TODO Auto-generated constructor stub
-		senderReceiver = new SenderReceiver(this, receiverServerport);
-		this.cdrHandle = interProcessCoordinator;
+		senderReceiver = new SenderReceiver(this, cdrHandle.getConfigurationHandle().getProtocolPort());
 	}
 
 	//for testing only
 	boolean leader=false;
 	//InetSocketAddress destination;
-	public Protocol(InterProcessCoordinator interProcessCoordinator, int myServerport, boolean leader) 
+	public Protocol(InterProcessCoordinator interProcessCoordinator, boolean leader) 
 	{
 		// TODO Auto-generated constructor stub
-		senderReceiver = new SenderReceiver(this, myServerport);
+		
 		this.cdrHandle = interProcessCoordinator;
+		senderReceiver = new SenderReceiver(this, cdrHandle.getConfigurationHandle().getProtocolPort());
 		this.leader=leader;
-		//if(leader)
-		//joinRequest(destination);
+		if(leader)
+			leaderStartsFormingEnsemble(3);
 	}
 
 	@Override 

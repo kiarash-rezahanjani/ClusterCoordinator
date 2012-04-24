@@ -90,13 +90,24 @@ public final class Configuration {
 		return bufferServerSocketAddress;
 	}
 	
+	public int getBufferServerPort()
+	{
+		return bufferServerPort; 
+	}
+	
+	public int getProtocolPort()
+	{
+		return protocolPort; 
+	}
+	
 	public static void main(String[] args)
 	{
 		System.out.println( System.getProperty("user.dir") );
-		Configuration conf = new Configuration("applicationProperties1");
+		Configuration conf = new Configuration();
 		
 		System.out.println("server address:" + conf.getBufferServerSocketAddress().toString());
 		System.out.println("protocol address:" + conf.getProtocolSocketAddress().toString());
 		
 	}
+	
 }

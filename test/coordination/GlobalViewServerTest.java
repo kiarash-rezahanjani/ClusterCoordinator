@@ -15,6 +15,7 @@ import org.junit.Test;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 
+import utility.Configuration;
 import utility.Znode.ServerData;
 import utility.Znode.ServersGlobalView;
 
@@ -22,11 +23,12 @@ public class GlobalViewServerTest {
 
 	static ZookeeperClient zkCli;
 	static GlobalViewServer gvs;
-
+	static Configuration config = new Configuration();
+	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		System.out.print("GlobalViewServerTest JUNIT TEST STARTED...");
-		zkCli = new ZookeeperClient(null);
+		zkCli = new ZookeeperClient(null,config);
 		gvs = new GlobalViewServer(zkCli, 2000);
 
 	}

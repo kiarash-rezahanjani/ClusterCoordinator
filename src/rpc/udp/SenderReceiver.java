@@ -12,12 +12,10 @@ import protocol.ReceivedMessageCallBack;
 public class SenderReceiver implements Closeable
 {
 	private ReceivedMessageCallBack callback;
-
 	private UdpClient sender ;
 	private UdpServer receiver ;
 	private InetSocketAddress serverSocketAddress;
-	
-
+/*	
 	public SenderReceiver(ReceivedMessageCallBack callback)
 	{
 		this.callback = callback;
@@ -33,7 +31,7 @@ public class SenderReceiver implements Closeable
 		
 		serverSocketAddress = receiver.getServerSocketAddress();
 	}
-
+*/
 	public SenderReceiver(ReceivedMessageCallBack callback, int port)
 	{
 		this.callback = callback;

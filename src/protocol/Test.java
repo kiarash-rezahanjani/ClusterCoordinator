@@ -15,14 +15,14 @@ public class Test {
 		InterProcessCoordinator co1 = new InterProcessCoordinator();
 		InterProcessCoordinator co2 = new InterProcessCoordinator();
 		
-		Protocol p1 = new Protocol(co1, 1111, false);
+		//Protocol p1 = new Protocol(co1, 1111, false);
 		try {
 			Thread.sleep(1000);
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		Protocol p2 = new Protocol(co2, 2222, true);
+		//Protocol p2 = new Protocol(co2, 2222, true);
 		 
 		
 		

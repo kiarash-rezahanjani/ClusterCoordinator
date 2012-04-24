@@ -22,6 +22,7 @@ import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.Stat;
 
 
+import utility.Configuration;
 import utility.NetworkUtil;
 import utility.Znode.EnsembleData;
 import utility.Znode.ServerData;
@@ -43,11 +44,13 @@ public class ZookeeperClient implements Closeable{
 	String ensembleRootPath = nameSpace + "/ensembles";
 	String myServerZnodePath = null;
 	String ensembleMembersZnodeName = "ensembleMembers"; 
-
+	Configuration config;
 
 	//connect to zookeeper and register a wacher object
-	public ZookeeperClient( Watcher watcher) throws KeeperException, IOException, InterruptedException
+	public ZookeeperClient( Watcher watcher, Configuration config) throws KeeperException, IOException, InterruptedException
 	{
+		this.config = config;
+		
 		if(zk==null)
 		{
 			zk = new ZooKeeper(zkConnectionString, sessionTimeOut, watcher);	
@@ -58,7 +61,7 @@ public class ZookeeperClient implements Closeable{
 			createRoot(ensembleRootPath);
 		}
 		
-		myServerZnodePath = serverRootPath + "/" + NetworkUtil.getServerSocketAddress(); //( socketAddress != null ? socketAddress : new Random().nextInt(100000) );
+		myServerZnodePath = serverRootPath + "/" + config.getProtocolSocketAddress().toString().replace("/", "-"); //( socketAddress != null ? socketAddress : new Random().nextInt(100000) );
 	}
 	
 	/**

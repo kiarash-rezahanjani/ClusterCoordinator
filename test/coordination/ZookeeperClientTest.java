@@ -14,6 +14,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import coordination.GlobalViewServer;
 import coordination.ZookeeperClient;
 
+import utility.Configuration;
 import utility.Znode.EnsembleData;
 import utility.Znode.ServerData;
 import utility.Znode.ServerData.Status;
@@ -22,11 +23,11 @@ import utility.Znode.ServerData.Status;
 public class ZookeeperClientTest {
 
 	static ZookeeperClient zkCli;
-	
+	static Configuration config = new Configuration();
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		System.out.print("ZookeeperClientTest JUNIT TEST STARTED...");
-		zkCli = new ZookeeperClient(null);
+		zkCli = new ZookeeperClient(null,config);
 		
 	}
 

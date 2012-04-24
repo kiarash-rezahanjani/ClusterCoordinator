@@ -109,6 +109,13 @@ public final class Znode {
     public boolean hasSocketAddress() { return hasSocketAddress; }
     public java.lang.String getSocketAddress() { return socketAddress_; }
     
+    // required string bufferServerSocketAddress = 6;
+    public static final int BUFFERSERVERSOCKETADDRESS_FIELD_NUMBER = 6;
+    private boolean hasBufferServerSocketAddress;
+    private java.lang.String bufferServerSocketAddress_ = "";
+    public boolean hasBufferServerSocketAddress() { return hasBufferServerSocketAddress; }
+    public java.lang.String getBufferServerSocketAddress() { return bufferServerSocketAddress_; }
+    
     // optional string rack = 2;
     public static final int RACK_FIELD_NUMBER = 2;
     private boolean hasRack;
@@ -147,6 +154,7 @@ public final class Znode {
     }
     public final boolean isInitialized() {
       if (!hasSocketAddress) return false;
+      if (!hasBufferServerSocketAddress) return false;
       return true;
     }
     
@@ -167,6 +175,9 @@ public final class Znode {
       }
       for (java.lang.String element : getEnsembleListList()) {
         output.writeString(5, element);
+      }
+      if (hasBufferServerSocketAddress()) {
+        output.writeString(6, getBufferServerSocketAddress());
       }
       getUnknownFields().writeTo(output);
     }
@@ -201,6 +212,10 @@ public final class Znode {
         }
         size += dataSize;
         size += 1 * getEnsembleListList().size();
+      }
+      if (hasBufferServerSocketAddress()) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeStringSize(6, getBufferServerSocketAddress());
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -367,6 +382,9 @@ public final class Znode {
         if (other.hasSocketAddress()) {
           setSocketAddress(other.getSocketAddress());
         }
+        if (other.hasBufferServerSocketAddress()) {
+          setBufferServerSocketAddress(other.getBufferServerSocketAddress());
+        }
         if (other.hasRack()) {
           setRack(other.getRack());
         }
@@ -433,6 +451,10 @@ public final class Znode {
               addEnsembleList(input.readString());
               break;
             }
+            case 50: {
+              setBufferServerSocketAddress(input.readString());
+              break;
+            }
           }
         }
       }
@@ -456,6 +478,27 @@ public final class Znode {
       public Builder clearSocketAddress() {
         result.hasSocketAddress = false;
         result.socketAddress_ = getDefaultInstance().getSocketAddress();
+        return this;
+      }
+      
+      // required string bufferServerSocketAddress = 6;
+      public boolean hasBufferServerSocketAddress() {
+        return result.hasBufferServerSocketAddress();
+      }
+      public java.lang.String getBufferServerSocketAddress() {
+        return result.getBufferServerSocketAddress();
+      }
+      public Builder setBufferServerSocketAddress(java.lang.String value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  result.hasBufferServerSocketAddress = true;
+        result.bufferServerSocketAddress_ = value;
+        return this;
+      }
+      public Builder clearBufferServerSocketAddress() {
+        result.hasBufferServerSocketAddress = false;
+        result.bufferServerSocketAddress_ = getDefaultInstance().getBufferServerSocketAddress();
         return this;
       }
       
@@ -1993,22 +2036,23 @@ public final class Znode {
   static {
     java.lang.String[] descriptorData = {
       "\n\036proto/znodedatastructure.proto\022\rserial" +
-      "ization\"\321\001\n\nServerData\022\025\n\rsocketAddress\030" +
-      "\001 \002(\t\022\014\n\004rack\030\002 \001(\t\022.\n\004stat\030\003 \001(\0162 .seri" +
-      "alization.ServerData.Status\022\024\n\014capacityL" +
-      "eft\030\004 \001(\005\022\024\n\014ensembleList\030\005 \003(\t\"B\n\006Statu" +
-      "s\022\033\n\027ACCEPT_ENSEMBLE_REQUEST\020\000\022\033\n\027REJECT" +
-      "_ENSEMBLE_REQUEST\020\001\"Z\n\021ServersGlobalView" +
-      "\0220\n\rsortedServers\030\001 \003(\0132\031.serialization." +
-      "ServerData\022\023\n\013leaderIndex\030\002 \003(\005\"\240\002\n\014Ense" +
-      "mbleData\022\016\n\006leader\030\001 \001(\t\0223\n\007members\030\002 \003(",
-      "\0132\".serialization.EnsembleData.Member\0220\n" +
-      "\004stat\030\003 \001(\0162\".serialization.EnsembleData" +
-      ".Status\022\024\n\014capacityLeft\030\004 \001(\005\032=\n\006Member\022" +
-      "\025\n\rsocketAddress\030\001 \002(\t\022\r\n\005heads\030\002 \003(\t\022\r\n" +
-      "\005tails\030\003 \003(\t\"D\n\006Status\022\024\n\020ACCPT_CONNECTI" +
-      "ON\020\000\022\025\n\021REJECT_CONNECTION\020\001\022\r\n\tREPAIRING" +
-      "\020\002B\020\n\007utilityB\005Znode"
+      "ization\"\364\001\n\nServerData\022\025\n\rsocketAddress\030" +
+      "\001 \002(\t\022!\n\031bufferServerSocketAddress\030\006 \002(\t" +
+      "\022\014\n\004rack\030\002 \001(\t\022.\n\004stat\030\003 \001(\0162 .serializa" +
+      "tion.ServerData.Status\022\024\n\014capacityLeft\030\004" +
+      " \001(\005\022\024\n\014ensembleList\030\005 \003(\t\"B\n\006Status\022\033\n\027" +
+      "ACCEPT_ENSEMBLE_REQUEST\020\000\022\033\n\027REJECT_ENSE" +
+      "MBLE_REQUEST\020\001\"Z\n\021ServersGlobalView\0220\n\rs" +
+      "ortedServers\030\001 \003(\0132\031.serialization.Serve" +
+      "rData\022\023\n\013leaderIndex\030\002 \003(\005\"\240\002\n\014EnsembleD",
+      "ata\022\016\n\006leader\030\001 \001(\t\0223\n\007members\030\002 \003(\0132\".s" +
+      "erialization.EnsembleData.Member\0220\n\004stat" +
+      "\030\003 \001(\0162\".serialization.EnsembleData.Stat" +
+      "us\022\024\n\014capacityLeft\030\004 \001(\005\032=\n\006Member\022\025\n\rso" +
+      "cketAddress\030\001 \002(\t\022\r\n\005heads\030\002 \003(\t\022\r\n\005tail" +
+      "s\030\003 \003(\t\"D\n\006Status\022\024\n\020ACCPT_CONNECTION\020\000\022" +
+      "\025\n\021REJECT_CONNECTION\020\001\022\r\n\tREPAIRING\020\002B\020\n" +
+      "\007utilityB\005Znode"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -2020,7 +2064,7 @@ public final class Znode {
           internal_static_serialization_ServerData_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_serialization_ServerData_descriptor,
-              new java.lang.String[] { "SocketAddress", "Rack", "Stat", "CapacityLeft", "EnsembleList", },
+              new java.lang.String[] { "SocketAddress", "BufferServerSocketAddress", "Rack", "Stat", "CapacityLeft", "EnsembleList", },
               utility.Znode.ServerData.class,
               utility.Znode.ServerData.Builder.class);
           internal_static_serialization_ServersGlobalView_descriptor =

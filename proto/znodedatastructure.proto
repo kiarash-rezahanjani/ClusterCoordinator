@@ -4,7 +4,8 @@ option java_package = "utility";
 option java_outer_classname = "Znode";
 
 message ServerData {
-  required string socketAddress = 1;
+  required string socketAddress = 1; //protocol socket address
+  required string bufferServerSocketAddress = 6;
   optional string rack = 2;
   optional Status stat = 3;
   optional int32 capacityLeft = 4;

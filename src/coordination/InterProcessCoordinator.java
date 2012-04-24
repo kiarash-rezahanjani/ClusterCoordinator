@@ -29,37 +29,48 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class InterProcessCoordinator {
+public class InterProcessCoordinator implements Watcher{
 
 
 	ZookeeperClient zkCli;
-	String mySocketAddress;
-	EventWatcher eventWatcher;
+	//String mySocketAddress;
+	//EventWatcher eventWatcher;
 	ExecutorService executor;
+	
 	//chains
 	EnsemblesMetaData ensemblesMetaData;
-	Protocol protocol = new Protocol(this);
-	final int SATURATION_POINT=100;
+	Protocol protocol;
 	int totalLoad ;//later on replaced by an object containing cpu memory and bandwidth consumption
 	ServersGlobalView serversGlobalView;
 	Status status = new Status(ServerStatus.ALL_FUNCTIONAL_ACCEPT_REQUEST);
 	Configuration config;
-
+	static final String defaultConfigFile = "applicationProperties";
+	final int SATURATION_POINT=100;
+	
 	//clients
 	//...
-
+	
 	//persistence
 	//...
-
 	public InterProcessCoordinator()
+	{
+		this(defaultConfigFile);
+	}
+	
+	public InterProcessCoordinator(String configFile)
 	{
 		try {
 			config = new Configuration();
 			//mySocketAddress = config.;
-			ensemblesMetaData = new EnsemblesMetaData(mySocketAddress);
-			eventWatcher = new EventWatcher(this);
-			zkCli = new ZookeeperClient(eventWatcher);
+			ensemblesMetaData = new EnsemblesMetaData(config);
+			//eventWatcher = new EventWatcher(this);
+			zkCli = new ZookeeperClient(this, config);
 			zkCli.createServerZnode(getInitialServerData());
+			
+			if(configFile=="applicationProperties")
+				protocol = new Protocol(this, true);
+			else
+				protocol = new Protocol(this, false);
 
 		}catch (UnknownHostException e) {
 			// TODO Auto-generated catch block
@@ -83,16 +94,26 @@ public class InterProcessCoordinator {
 	ServerData getInitialServerData()
 	{
 		ServerData.Builder data = ServerData.newBuilder();
+		
 		data.setCapacityLeft(new Random().nextInt(101));
-		data.setSocketAddress( NetworkUtil.getServerSocketAddress());
+		data.setSocketAddress( config.getProtocolSocketAddress().toString());
+		data.setBufferServerSocketAddress(config.getBufferServerSocketAddress().toString());
+		
 		data.setStat(ServerData.Status.ACCEPT_ENSEMBLE_REQUEST);
+		
 		return data.build();
 	}
 	
 	public Status getStatusHandle() {
 		return status;	
 	}
+	
+	public Configuration getConfigurationHandle()
+	{
+		return config;
+	}
 
+	//status needs to be synchronized, so we need an object to enable fine grained synchronization
 	public class Status
 	{
 		short status = ServerStatus.ALL_FUNCTIONAL_ACCEPT_REQUEST; 
@@ -172,7 +193,13 @@ public class InterProcessCoordinator {
 		List<ServerData> sortedServers;
 		List<InetSocketAddress> list = new ArrayList<InetSocketAddress>();
 		try {
-			sortedServers = zkCli.getSortedServersList();
+			for(;;)//for testing
+			{
+				sortedServers = zkCli.getSortedServersList();
+				if(sortedServers.size()>=3)
+					break;
+				Thread.sleep(1000);
+			}
 			list = new ArrayList<InetSocketAddress>();
 			
 			for(ServerData s : sortedServers)
@@ -202,6 +229,12 @@ public class InterProcessCoordinator {
 	public void run() {
 		// TODO Auto-generated method stub
 
+	}
+
+	@Override
+	public void process(WatchedEvent event) {
+		// TODO Auto-generated method stub
+		
 	}
 
 }
