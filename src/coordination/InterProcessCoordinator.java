@@ -19,6 +19,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import protocol.Protocol;
 
 
+import utility.Configuration;
 import utility.NetworkUtil;
 import utility.Znode.EnsembleData;
 import utility.Znode.ServerData;
@@ -37,11 +38,12 @@ public class InterProcessCoordinator {
 	ExecutorService executor;
 	//chains
 	EnsemblesMetaData ensemblesMetaData;
-	//Protocol protocol = new Protocol(this);
+	Protocol protocol = new Protocol(this);
 	final int SATURATION_POINT=100;
 	int totalLoad ;//later on replaced by an object containing cpu memory and bandwidth consumption
 	ServersGlobalView serversGlobalView;
 	Status status = new Status(ServerStatus.ALL_FUNCTIONAL_ACCEPT_REQUEST);
+	Configuration config;
 
 	//clients
 	//...
@@ -49,6 +51,44 @@ public class InterProcessCoordinator {
 	//persistence
 	//...
 
+	public InterProcessCoordinator()
+	{
+		try {
+			config = new Configuration();
+			//mySocketAddress = config.;
+			ensemblesMetaData = new EnsemblesMetaData(mySocketAddress);
+			eventWatcher = new EventWatcher(this);
+			zkCli = new ZookeeperClient(eventWatcher);
+			zkCli.createServerZnode(getInitialServerData());
+
+		}catch (UnknownHostException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			System.exit(-1);
+		}catch (KeeperException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			System.exit(-1);
+		}catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			System.exit(-1);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			System.exit(-1);
+		}
+	}
+
+	ServerData getInitialServerData()
+	{
+		ServerData.Builder data = ServerData.newBuilder();
+		data.setCapacityLeft(new Random().nextInt(101));
+		data.setSocketAddress( NetworkUtil.getServerSocketAddress());
+		data.setStat(ServerData.Status.ACCEPT_ENSEMBLE_REQUEST);
+		return data.build();
+	}
+	
 	public Status getStatusHandle() {
 		return status;	
 	}
@@ -98,42 +138,7 @@ public class InterProcessCoordinator {
 		short ALL_FUNCTIONAL_ACCEPT_REQUEST  = 1;//( short) ServerData.Status.ACCEPT_ENSEMBLE_REQUEST.getNumber();// all fine and I can also join a new ensemble
 	}
 
-	public InterProcessCoordinator()
-	{
-		try {
-			mySocketAddress = NetworkUtil.getServerSocketAddress();
-			ensemblesMetaData = new EnsemblesMetaData(mySocketAddress);
-			eventWatcher = new EventWatcher(this);
-			zkCli = new ZookeeperClient(eventWatcher);
-			zkCli.createServerZnode(getInitialServerData());
 
-		}catch (UnknownHostException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			System.exit(-1);
-		}catch (KeeperException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			System.exit(-1);
-		}catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			System.exit(-1);
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			System.exit(-1);
-		}
-	}
-
-	ServerData getInitialServerData()
-	{
-		ServerData.Builder data = ServerData.newBuilder();
-		data.setCapacityLeft(new Random().nextInt(100));
-		data.setSocketAddress(NetworkUtil.getServerSocketAddress());
-		data.setStat(ServerData.Status.ACCEPT_ENSEMBLE_REQUEST);
-		return data.build();
-	}
 
 	/**
 	 * This method is invoked when the server becomes in charge of updating the global view.
@@ -163,19 +168,31 @@ public class InterProcessCoordinator {
 	}
 	//testing version
 	public List<InetSocketAddress> getSortedCandidates() //throws InvalidProtocolBufferException, KeeperException, InterruptedException 
-	{/*
-		List<ServerData> sortedServers= zkCli.getSortedServersList(); //or use globalview
+	{
+		List<ServerData> sortedServers;
 		List<InetSocketAddress> list = new ArrayList<InetSocketAddress>();
+		try {
+			sortedServers = zkCli.getSortedServersList();
+			list = new ArrayList<InetSocketAddress>();
+			
+			for(ServerData s : sortedServers)
+			{
+				list.add(NetworkUtil.parseInetSocketAddress( s.getSocketAddress()) );
+			}
+			
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} 
 		
-		for(ServerData sd : sortedServers)
-		{
-			list.add(NetworkUtil.parseInetSocketAddress( sd.getSocketAddress()) );
-		}
-*/
+
+
+		/*	
 		List<InetSocketAddress> list = new ArrayList<InetSocketAddress>();
 		list.add(new InetSocketAddress("localhost", 3333));
 		list.add(new InetSocketAddress("localhost", 1111));
 		list.add(new InetSocketAddress("localhost", 4444));
+		*/
 		return list;
 	}
 

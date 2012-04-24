@@ -11,6 +11,7 @@ public class NetworkUtil
 {
 
 	static int port = 3311;
+	static InetSocketAddress receiverSocketAddress;
 	
 	public static String getServerSocketAddress() 
 	{

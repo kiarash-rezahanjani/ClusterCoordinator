@@ -7,6 +7,7 @@ import java.util.Random;
 import protocol.MessageType;
 import protocol.ProtocolMessage;
 import protocol.ReceivedMessageCallBack;
+import utility.NetworkUtil;
 
 
 public class Test {
@@ -123,8 +124,8 @@ public class Test {
 		// TODO Auto-generated method stub
 
 		//checkClientServerCommunication();
-		checkCheckSenerReceiver();
-
+		//checkCheckSenerReceiver();
+		System.out.println(NetworkUtil.parseInetSocketAddress("localhost:122").toString());
 	}
 
 }

@@ -11,6 +11,7 @@ public class Test {
 	 */
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
+		
 		InterProcessCoordinator co1 = new InterProcessCoordinator();
 		InterProcessCoordinator co2 = new InterProcessCoordinator();
 		
@@ -22,6 +23,9 @@ public class Test {
 			e.printStackTrace();
 		}
 		Protocol p2 = new Protocol(co2, 2222, true);
+		 
+		
+		
 	}
 
 }
