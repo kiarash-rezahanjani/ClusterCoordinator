@@ -108,7 +108,9 @@ public class Protocol implements ReceivedMessageCallBack {
 				{
 					statusHandle.setStatus(ServerStatus.FORMING_ENSEMBLE_NOT_LEADER_CONNECTING);
 					printStatus();
-					System.out.println(  message.msgContent );
+					System.out.println( "Connectin msg: "+ message.msgContent );
+					//IMPORTANT
+					//startConnecting(List<InetSocketAddress> ensembleMembers) 
 					iamConnectedSignal(srcSocketAddress);
 					statusHandle.setStatus(ServerStatus.FORMING_ENSEMBLE_NOT_LEADER_WAIT_FOR_START_SIGNAL);// need to check if there is enough capacity left
 					printStatus();
@@ -195,6 +197,47 @@ public class Protocol implements ReceivedMessageCallBack {
 			}
 
 			List<InetSocketAddress> candidates = cdrHandle.getSortedCandidates();//get candidates
+			if(candidates.size() < replicationFactor-1)
+			{
+				System.out.println("candidates.size() < replicationFactor");
+				System.exit(-1);
+			}
+
+			lbk.setEnsembleSize(replicationFactor);
+			lbk.addCandidateList(candidates);
+
+			status.setStatus(ServerStatus.FORMING_ENSEMBLE_LEADER_WAIT_FOR_ACCEPT);
+			//-1 : leader is also part of the chain
+			for(int i=0 ; i<replicationFactor-1; i++)
+			{
+				joinRequest(candidates.get(i));
+				lbk.putRequestedNode(candidates.get(i), false);
+			}
+		}
+	}
+	
+	void leaderFixEnsemble(int replicationFactor, List<InetSocketAddress> aliveNodes)
+	{
+		/*
+		Status status = cdrHandle.getStatusHandle();
+
+		synchronized(status)
+		{
+			printStatus();
+			if(status.getStatus()!=ServerStatus.BROKEN_ENSEMBLE  
+					&& status.getStatus()!=ServerStatus.BROKEN_ENSEMBLE_FINDING_REPLACEMENT )
+			{
+				System.out.println("Fixing ensemble while status.getStatus()!=ServerStatus.BROKEN_ENSEMBLE  . ");
+				System.exit(-1);
+			}
+
+			if(!lbk.isEmpty())
+			{
+				System.out.println("An attemp is made to form ensemble and Leaderbook Keeper is not empty. ");
+				System.exit(-1);
+			}
+
+			List<InetSocketAddress> candidates = cdrHandle.getSortedCandidates();//get candidates
 			if(candidates.size()<replicationFactor-1)
 			{
 				System.out.println("candidates.size() < replicationFactor");
@@ -212,6 +255,7 @@ public class Protocol implements ReceivedMessageCallBack {
 				lbk.putRequestedNode(candidates.get(i), false);
 			}
 		}
+		*/
 	}
 
 	void leaderProcessWaitForAccept(ProtocolMessage message, Status status)
@@ -264,6 +308,11 @@ public class Protocol implements ReceivedMessageCallBack {
 		if(message.getMessageType()== MessageType.FAILED_ENSEMBLE_CONNECTION)
 			lbk.putConnectedNode(message.getSrcSocketAddress(), false);
 
+	}
+	
+	void startConnecting(List<InetSocketAddress> ensembleMembers)
+	{
+		
 	}
 	//-------------------------------------------Follower----------------------------------	
 

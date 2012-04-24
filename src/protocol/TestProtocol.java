@@ -35,6 +35,19 @@ public class TestProtocol {
 		InterProcessCoordinator co1 = new InterProcessCoordinator();
 		InterProcessCoordinator co2 = new InterProcessCoordinator();
 		InterProcessCoordinator co3 = new InterProcessCoordinator();
+		InterProcessCoordinator co4 = new InterProcessCoordinator();
+		
+		
+		System.out.println("PROTOCOL 4.");
+		
+		Protocol p4 = new Protocol(co4, 4444, false);
+		try {
+			Thread.sleep(1000);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 		
 		System.out.println("PROTOCOL 3.");
 		
@@ -60,7 +73,7 @@ public class TestProtocol {
 		System.out.println("PROTOCOL 2.");
 		
 		Protocol p2 = new Protocol(co2, 2222, true);
-		p2.leaderStartsFormingEnsemble(3);
+		p2.leaderStartsFormingEnsemble(4);
 	}
 
 }

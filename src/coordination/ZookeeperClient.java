@@ -149,7 +149,7 @@ public class ZookeeperClient implements Closeable{
 		return zk.getChildren(serverRootPath, false);
 	}
 
-	//----------------------------------  ------------------------------------------------------------------- Ensemble-----------------------------------------------------------------------
+	//--------------------------- Ensemble-----------------------------------------------------------------------
 
 	public String createEnsembleZnode(EnsembleData data) throws KeeperException, InterruptedException
 	{
@@ -183,7 +183,7 @@ public class ZookeeperClient implements Closeable{
 	//failure operation
 
 
-	//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+	//--------------------------------------------------------------------------------
 	public boolean exists(String path) throws KeeperException, InterruptedException
 	{
 		Stat s = zk.exists(path, false);
@@ -194,7 +194,7 @@ public class ZookeeperClient implements Closeable{
 	}
 	//choose subset of all children of server node and sort them, nodes are chosen randomly and there is a lower limit of number of retured candidates 
 	//working fine
-	public List<ServerData> getEnsembleCandidates() throws KeeperException, InterruptedException, InvalidProtocolBufferException
+	public List<ServerData> getRandomEnsembleCandidates() throws KeeperException, InterruptedException, InvalidProtocolBufferException
 	{
 		float subSetFraction = 0.1f;
 		int minCandidates = 5;
@@ -270,7 +270,7 @@ public class ZookeeperClient implements Closeable{
 	//---------------------------------------------------Servers View Snapshot----------------------
 	
 	//sort all the servers based on the capacity left using insertion sort, those with max capacity come in the beginning
-	List<ServerData> sortedServersList() throws KeeperException, InterruptedException, InvalidProtocolBufferException
+	public List<ServerData> getSortedServersList() throws KeeperException, InterruptedException, InvalidProtocolBufferException
 	{
 		List<ServerData> sortedServers = new LinkedList<ServerData>(); 
 		List<String> children = zk.getChildren(serverRootPath, false);
