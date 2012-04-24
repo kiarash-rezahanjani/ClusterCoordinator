@@ -61,7 +61,7 @@ public final class UdpServer {
                 
                 System.out.println("UDP server listening on port " + port);
                 
-                serverChannel = bootstrap.bind(new InetSocketAddress(port));
+                serverChannel = bootstrap.bind(new InetSocketAddress("localhost",port));
                 
                 running = true;
         }
@@ -82,7 +82,7 @@ public final class UdpServer {
         public InetSocketAddress getServerSocketAddress()
         {
         	//for testing
-        	return (new InetSocketAddress(port));
+        	return (new InetSocketAddress("localhost",port));
         	//return (InetSocketAddress) serverChannel.getLocalAddress();
         }
         

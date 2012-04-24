@@ -49,6 +49,7 @@ public class Protocol implements ReceivedMessageCallBack {
 
 	void processMessage(ProtocolMessage message)
 	{
+		//printStatus();
 		//System.out.println("OOOO");
 		//		Short s =cdrHandle.getStatus();
 		InterProcessCoordinator.Status statusHandle = cdrHandle.getStatusHandle();
@@ -176,27 +177,31 @@ public class Protocol implements ReceivedMessageCallBack {
 
 		synchronized(status)
 		{
-			printStatus();
+			//printStatus();
 			if(status.getStatus()!=ServerStatus.ALL_FUNCTIONAL_ACCEPT_REQUEST  
 					&& status.getStatus()!=ServerStatus.FORMING_ENSEMBLE_LEADER_STARTED )
 			{
 				System.out.println("Formin ensemble while status.getStatus()!=ServerStatus.ALL_FUNCTIONAL_ACCEPT_REQUEST . ");
 				System.exit(-1);
 			}
-
+			//printStatus();
 			if(!lbk.isEmpty())
 			{
 				System.out.println("An attemp is made to form ensemble and Leaderbook Keeper is not empty. ");
 				System.exit(-1);
 			}
-
+			//printStatus();
+			System.out.println("1");
 			List<InetSocketAddress> candidates = cdrHandle.getSortedCandidates();//get candidates
+			System.out.println("2");
+			System.out.println(candidates);
+			printStatus();
 			if(candidates.size() < replicationFactor-1)
 			{
 				System.out.println("candidates.size() < replicationFactor");
 				System.exit(-1);
 			}
-
+			//printStatus();
 			lbk.setEnsembleSize(replicationFactor);
 			lbk.addCandidateList(candidates);
 
@@ -207,6 +212,7 @@ public class Protocol implements ReceivedMessageCallBack {
 				joinRequest(candidates.get(i));
 				lbk.putRequestedNode(candidates.get(i), false);
 			}
+			//printStatus();
 		}
 	}
 	
@@ -270,7 +276,6 @@ public class Protocol implements ReceivedMessageCallBack {
 					connectSignal(sa, listOfEnsembleServers);
 
 			}
-
 		}
 
 		if(message.getMessageType()== MessageType.REJECTED_JOIN_ENSEMBLE_REQUEST)

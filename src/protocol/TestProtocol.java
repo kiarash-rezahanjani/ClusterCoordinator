@@ -32,11 +32,11 @@ public class TestProtocol {
 	
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
-		InterProcessCoordinator co1 = new InterProcessCoordinator("applicationProperties");
+		
 		InterProcessCoordinator co2 = new InterProcessCoordinator("applicationProperties1");
 		InterProcessCoordinator co3 = new InterProcessCoordinator("applicationProperties2");
 		InterProcessCoordinator co4 = new InterProcessCoordinator("applicationProperties3");
-		
+		InterProcessCoordinator co1 = new InterProcessCoordinator("applicationProperties");
 		/*
 		System.out.println("PROTOCOL 4.");
 		

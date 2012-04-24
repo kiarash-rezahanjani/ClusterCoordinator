@@ -57,8 +57,8 @@ public final class Configuration {
 			System.out.println(protocolPort);
 			System.out.println(bufferServerPort);
 		
-			protocolSocketAddress = new InetSocketAddress(protocolPort);
-			bufferServerSocketAddress = new InetSocketAddress(bufferServerPort);
+			protocolSocketAddress = new InetSocketAddress("localhost",protocolPort);
+			bufferServerSocketAddress = new InetSocketAddress("localhost",bufferServerPort);
 			
 		} catch (FileNotFoundException e) {
 			// TODO Auto-generated catch block
@@ -99,7 +99,7 @@ public final class Configuration {
 	{
 		return protocolPort; 
 	}
-	
+	/*
 	public static void main(String[] args)
 	{
 		System.out.println( System.getProperty("user.dir") );
@@ -109,5 +109,5 @@ public final class Configuration {
 		System.out.println("protocol address:" + conf.getProtocolSocketAddress().toString());
 		
 	}
-	
+	*/
 }

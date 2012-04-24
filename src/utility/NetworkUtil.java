@@ -65,7 +65,8 @@ public class NetworkUtil
 		{
 		  host = m.group(1);
 		  port = Integer.parseInt(m.group(2));
-		  return new InetSocketAddress(host, port);
+		  //System.out.println(host+ " " +port);
+		  return new InetSocketAddress("localhost", port);
 		}else
 			return null;
 

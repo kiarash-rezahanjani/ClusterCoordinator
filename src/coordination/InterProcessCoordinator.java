@@ -29,6 +29,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
+
 public class InterProcessCoordinator implements Watcher{
 
 
@@ -36,7 +37,7 @@ public class InterProcessCoordinator implements Watcher{
 	//String mySocketAddress;
 	//EventWatcher eventWatcher;
 	ExecutorService executor;
-	
+
 	//chains
 	EnsemblesMetaData ensemblesMetaData;
 	Protocol protocol;
@@ -46,27 +47,28 @@ public class InterProcessCoordinator implements Watcher{
 	Configuration config;
 	static final String defaultConfigFile = "applicationProperties";
 	final int SATURATION_POINT=100;
-	
+
 	//clients
 	//...
-	
+
 	//persistence
 	//...
 	public InterProcessCoordinator()
 	{
 		this(defaultConfigFile);
 	}
-	
+
 	public InterProcessCoordinator(String configFile)
 	{
 		try {
-			config = new Configuration();
+			System.out.println(configFile);
+			config = new Configuration(configFile);
 			//mySocketAddress = config.;
 			ensemblesMetaData = new EnsemblesMetaData(config);
 			//eventWatcher = new EventWatcher(this);
 			zkCli = new ZookeeperClient(this, config);
 			zkCli.createServerZnode(getInitialServerData());
-			
+
 			if(configFile=="applicationProperties")
 				protocol = new Protocol(this, true);
 			else
@@ -94,20 +96,20 @@ public class InterProcessCoordinator implements Watcher{
 	ServerData getInitialServerData()
 	{
 		ServerData.Builder data = ServerData.newBuilder();
-		
+
 		data.setCapacityLeft(new Random().nextInt(101));
 		data.setSocketAddress( config.getProtocolSocketAddress().toString());
 		data.setBufferServerSocketAddress(config.getBufferServerSocketAddress().toString());
-		
+
 		data.setStat(ServerData.Status.ACCEPT_ENSEMBLE_REQUEST);
-		
+
 		return data.build();
 	}
-	
+
 	public Status getStatusHandle() {
 		return status;	
 	}
-	
+
 	public Configuration getConfigurationHandle()
 	{
 		return config;
@@ -200,18 +202,20 @@ public class InterProcessCoordinator implements Watcher{
 					break;
 				Thread.sleep(1000);
 			}
-			list = new ArrayList<InetSocketAddress>();
 			
+			list = new ArrayList<InetSocketAddress>();
+
 			for(ServerData s : sortedServers)
 			{
-				list.add(NetworkUtil.parseInetSocketAddress( s.getSocketAddress()) );
+				if(!config.getProtocolSocketAddress().toString().contains(s.getSocketAddress()))
+					list.add(NetworkUtil.parseInetSocketAddress( s.getSocketAddress()) );
 			}
-			
+
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} 
-		
+
 
 
 		/*	
@@ -219,7 +223,7 @@ public class InterProcessCoordinator implements Watcher{
 		list.add(new InetSocketAddress("localhost", 3333));
 		list.add(new InetSocketAddress("localhost", 1111));
 		list.add(new InetSocketAddress("localhost", 4444));
-		*/
+		 */
 		return list;
 	}
 
@@ -234,7 +238,7 @@ public class InterProcessCoordinator implements Watcher{
 	@Override
 	public void process(WatchedEvent event) {
 		// TODO Auto-generated method stub
-		
+
 	}
 
 }
