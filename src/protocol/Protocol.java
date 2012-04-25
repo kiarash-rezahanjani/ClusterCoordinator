@@ -49,7 +49,7 @@ public class Protocol implements ReceivedMessageCallBack {
 
 	void processMessage(ProtocolMessage message)
 	{
-		//printStatus();
+		//addStat();
 		//System.out.println("OOOO");
 		//		Short s =cdrHandle.getStatus();
 		InterProcessCoordinator.Status statusHandle = cdrHandle.getStatusHandle();
@@ -64,10 +64,10 @@ public class Protocol implements ReceivedMessageCallBack {
 			case ServerStatus.ALL_FUNCTIONAL_ACCEPT_REQUEST:
 				if(message.getMessageType()==MessageType.JOIN_ENSEMBLE_REQUEST )
 				{
-					printStatus();
+					addStat();
 					statusHandle.setStatus(ServerStatus.FORMING_ENSEMBLE_NOT_LEADER_STARTED);
 					acceptJoinRequest(srcSocketAddress);
-					printStatus();
+					addStat();
 				}
 				//	if(message.getMessageType() == MessageType.LEAVING_ENSEMBLE)
 				//		;
@@ -78,18 +78,18 @@ public class Protocol implements ReceivedMessageCallBack {
 				break;
 				//======================================================================================
 			case ServerStatus.FORMING_ENSEMBLE_LEADER_WAIT_FOR_ACCEPT: 
-				printStatus();
+				addStat();
 				leaderProcessWaitForAccept( message, statusHandle);
-				printStatus();
+				addStat();
 
 
 				break;
 				//======================================================================================
 			case ServerStatus.FORMING_ENSEMBLE_LEADER_WAIT_FOR_CONNECTED_SIGNAL: 
-				printStatus();
+				addStat();
 				leaderWaitForConnectedSignal(message, statusHandle);
-				printStatus();
-
+				addStat();
+				printStattransition();
 				break;
 				//======================================================================================
 			case ServerStatus.FORMING_ENSEMBLE_LEADER_EXEC_ROLL_BACK: 
@@ -102,13 +102,15 @@ public class Protocol implements ReceivedMessageCallBack {
 				if(message.getMessageType()==MessageType.START_ENSEMBLE_CONNECTION )
 				{
 					statusHandle.setStatus(ServerStatus.FORMING_ENSEMBLE_NOT_LEADER_CONNECTING);
-					printStatus();
-					System.out.println( "Connectin msg: "+ message.msgContent );
+					addStat();
+					
+					followerStartConnections(message);
+										
 					//IMPORTANT
 					//startConnecting(List<InetSocketAddress> ensembleMembers) 
 					iamConnectedSignal(srcSocketAddress);
 					statusHandle.setStatus(ServerStatus.FORMING_ENSEMBLE_NOT_LEADER_WAIT_FOR_START_SIGNAL);// need to check if there is enough capacity left
-					printStatus();
+					addStat();
 				}
 				if(message.getMessageType()==MessageType.OPERATION_FAILED )
 					;
@@ -122,14 +124,15 @@ public class Protocol implements ReceivedMessageCallBack {
 			case ServerStatus.FORMING_ENSEMBLE_NOT_LEADER_WAIT_FOR_START_SIGNAL: 
 				if(message.getMessageType()==MessageType.START_SERVICE)
 				{
-					printStatus();
+					addStat();
 					//iamConnectedSignal(srcSocketAddress);
 					//	List<InetSocketAddress> sa = (ArrayList<InetSocketAddress>) message.msgContent;
 					//	for(InetSocketAddress elm : sa)
 					//System.out.println(  message.msgContent );
 
 					statusHandle.setStatus(ServerStatus.ALL_FUNCTIONAL_ACCEPT_REQUEST);// need to check if there is enough capacity left
-					printStatus();
+					addStat();
+					printStattransition();
 				}
 				if(message.getMessageType()==MessageType.OPERATION_FAILED )
 					;
@@ -177,31 +180,31 @@ public class Protocol implements ReceivedMessageCallBack {
 
 		synchronized(status)
 		{
-			//printStatus();
+			//addStat();
 			if(status.getStatus()!=ServerStatus.ALL_FUNCTIONAL_ACCEPT_REQUEST  
 					&& status.getStatus()!=ServerStatus.FORMING_ENSEMBLE_LEADER_STARTED )
 			{
 				System.out.println("Formin ensemble while status.getStatus()!=ServerStatus.ALL_FUNCTIONAL_ACCEPT_REQUEST . ");
 				System.exit(-1);
 			}
-			//printStatus();
+			//addStat();
 			if(!lbk.isEmpty())
 			{
 				System.out.println("An attemp is made to form ensemble and Leaderbook Keeper is not empty. ");
 				System.exit(-1);
 			}
-			//printStatus();
+			//addStat();
 			System.out.println("1");
 			List<InetSocketAddress> candidates = cdrHandle.getSortedCandidates();//get candidates
 			System.out.println("2");
 			System.out.println(candidates);
-			printStatus();
+			addStat();
 			if(candidates.size() < replicationFactor-1)
 			{
 				System.out.println("candidates.size() < replicationFactor");
 				System.exit(-1);
 			}
-			//printStatus();
+			//addStat();
 			lbk.setEnsembleSize(replicationFactor);
 			lbk.addCandidateList(candidates);
 
@@ -212,50 +215,13 @@ public class Protocol implements ReceivedMessageCallBack {
 				joinRequest(candidates.get(i));
 				lbk.putRequestedNode(candidates.get(i), false);
 			}
-			//printStatus();
+			//addStat();
 		}
 	}
 	
 	void leaderFixEnsemble(int replicationFactor, List<InetSocketAddress> aliveNodes)
 	{
-		/*
-		Status status = cdrHandle.getStatusHandle();
 
-		synchronized(status)
-		{
-			printStatus();
-			if(status.getStatus()!=ServerStatus.BROKEN_ENSEMBLE  
-					&& status.getStatus()!=ServerStatus.BROKEN_ENSEMBLE_FINDING_REPLACEMENT )
-			{
-				System.out.println("Fixing ensemble while status.getStatus()!=ServerStatus.BROKEN_ENSEMBLE  . ");
-				System.exit(-1);
-			}
-
-			if(!lbk.isEmpty())
-			{
-				System.out.println("An attemp is made to form ensemble and Leaderbook Keeper is not empty. ");
-				System.exit(-1);
-			}
-
-			List<InetSocketAddress> candidates = cdrHandle.getSortedCandidates();//get candidates
-			if(candidates.size()<replicationFactor-1)
-			{
-				System.out.println("candidates.size() < replicationFactor");
-				System.exit(-1);
-			}
-
-			lbk.setEnsembleSize(replicationFactor);
-			lbk.addCandidateList(candidates);
-
-			status.setStatus(ServerStatus.FORMING_ENSEMBLE_LEADER_WAIT_FOR_ACCEPT);
-			//-1 : leader is also part of the chain
-			for(int i=0 ; i<replicationFactor-1; i++)
-			{
-				joinRequest(candidates.get(i));
-				lbk.putRequestedNode(candidates.get(i), false);
-			}
-		}
-		*/
 	}
 
 	void leaderProcessWaitForAccept(ProtocolMessage message, Status status)
@@ -315,7 +281,13 @@ public class Protocol implements ReceivedMessageCallBack {
 	}
 	//-------------------------------------------Follower----------------------------------	
 
-
+	void followerStartConnections(ProtocolMessage message)
+	{
+		List<InetSocketAddress> ensembleMembers = (List<InetSocketAddress> ) message.msgContent;
+		System.out.println( "Connectin msg1: " + ensembleMembers );
+		cdrHandle.createEnsemble(ensembleMembers);
+		
+	}
 
 
 	//-----------------------------------------------------------------------------------------	
@@ -324,9 +296,9 @@ public class Protocol implements ReceivedMessageCallBack {
 	public void joinRequest(InetSocketAddress srcSocketAddress)
 	{
 		senderReceiver.send(srcSocketAddress, new ProtocolMessage(MessageType.JOIN_ENSEMBLE_REQUEST, " "));
-		printStatus();
+		addStat();
 		cdrHandle.getStatusHandle().setStatus(ServerStatus.FORMING_ENSEMBLE_LEADER_WAIT_FOR_ACCEPT);
-		printStatus();
+		addStat();
 	}
 
 	public void acceptJoinRequest(InetSocketAddress srcSocketAddress)
@@ -335,7 +307,11 @@ public class Protocol implements ReceivedMessageCallBack {
 		//System.out.println("send accept join");
 	}
 
-	//for test //the whole ensemble data should be sent
+	/**
+	 * Signals a follower to start establishing the connections and creating required data structures for start an ensemble with given list of servers.
+	 * @param srcSocketAddress
+	 * @param list of servers in ensemble. the first element of the list is the leader of ensemble.
+	 */
 	public void connectSignal(InetSocketAddress srcSocketAddress, List<InetSocketAddress> list)
 	{
 		senderReceiver.send(srcSocketAddress, new ProtocolMessage(MessageType.START_ENSEMBLE_CONNECTION, list));
@@ -356,9 +332,15 @@ public class Protocol implements ReceivedMessageCallBack {
 	}
 
 
-	void printStatus()
+	List<Short> statTransition = new ArrayList<Short>();
+	 
+	void addStat()
 	{
-		System.out.println("Me:" + senderReceiver.getServerSocketAddress()+ " Leader:" + leader + " Status:" + cdrHandle.getStatusHandle().getStatus());
+		statTransition.add(cdrHandle.getStatusHandle().getStatus());
+	}
+	void printStattransition()
+	{
+		System.out.println("Me:" + senderReceiver.getServerSocketAddress()+ " Leader:" + leader + " Status:" + statTransition );
 	}
 
 }

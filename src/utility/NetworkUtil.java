@@ -12,7 +12,7 @@ public class NetworkUtil
 
 	static int port = 3311;
 	static InetSocketAddress receiverSocketAddress;
-	
+
 	public static String getServerSocketAddress() 
 	{
 		try {
@@ -24,7 +24,7 @@ public class NetworkUtil
 		}
 		return null;
 	}
-	
+
 	public static InetSocketAddress getInetSocketAddress() 
 	{
 		try {
@@ -36,7 +36,7 @@ public class NetworkUtil
 		}
 		return null;
 	}
-	
+
 	public static String getLocalHostAddress() 
 	{
 		try {
@@ -54,21 +54,60 @@ public class NetworkUtil
 	{
 		return "localhost"+ new Random().nextInt(50000);
 	}
-	
+
 	static public InetSocketAddress parseInetSocketAddress(String socketAddress)
 	{
+		String host = "";
+		int port=0;
+
 		Pattern p = Pattern.compile("^\\s*(.*?):(\\d+)\\s*$");
 		Matcher m = p.matcher(socketAddress);
-		String host="localhost";
-		int port=0;
+
 		if (m.matches()) 
 		{
-		  host = m.group(1);
-		  port = Integer.parseInt(m.group(2));
-		  //System.out.println(host+ " " +port);
-		  return new InetSocketAddress("localhost", port);
+			if(socketAddress.contains("/"))	
+				host = socketAddress.substring(0, socketAddress.indexOf("/") );
+
+			if(host.length()==0)
+				host = m.group(1);
+
+			port = Integer.parseInt(m.group(2));
+
+			System.out.println(host+ " " +port);
+			return new InetSocketAddress(host, port);
 		}else
 			return null;
 
 	}
+
+	static public String getHostColonPort(String socketAddress)
+	{
+		String host = "";
+		int port=0;
+
+		Pattern p = Pattern.compile("^\\s*(.*?):(\\d+)\\s*$");
+		Matcher m = p.matcher(socketAddress);
+
+		if (m.matches()) 
+		{
+			host = m.group(1);
+			
+			if(host.contains("/"))
+				host = host.substring( host.indexOf("/") + 1 );
+			
+			port = Integer.parseInt(m.group(2));
+
+			return host + ":" + port;
+		}else
+			return null;
+
+	}
+
+	public static void main(String args[])
+	{
+		System.out.println(
+				NetworkUtil.getHostColonPort("localhost/127.0.0.1:5555")
+				);
+	}
+
 }

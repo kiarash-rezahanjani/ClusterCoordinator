@@ -5,10 +5,13 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import java.io.Closeable;
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 
 import javax.xml.crypto.Data;
@@ -61,8 +64,32 @@ public class ZookeeperClient implements Closeable{
 			createRoot(ensembleRootPath);
 		}
 		
-		myServerZnodePath = serverRootPath + "/" + config.getProtocolSocketAddress().toString().replace("/", "-"); //( socketAddress != null ? socketAddress : new Random().nextInt(100000) );
+		myServerZnodePath = serverRootPath + "/" + getHostColonPort( config.getProtocolSocketAddress().toString() ); //( socketAddress != null ? socketAddress : new Random().nextInt(100000) );
 	}
+	
+	public String getHostColonPort(String socketAddress)
+	{
+		String host = "";
+		int port=0;
+
+		Pattern p = Pattern.compile("^\\s*(.*?):(\\d+)\\s*$");
+		Matcher m = p.matcher(socketAddress);
+
+		if (m.matches()) 
+		{
+			host = m.group(1);
+			
+			if(host.contains("/"))
+				host = host.substring( host.indexOf("/") + 1 );
+			
+			port = Integer.parseInt(m.group(2));
+
+			return host + ":" + port;
+		}else
+			return null;
+
+	}
+	
 	
 	/**
 	 * As the node might be created between time that exists method is returned and 
@@ -137,6 +164,11 @@ public class ZookeeperClient implements Closeable{
 		Stat s = new Stat();
 		byte[] data = zk.getData(serverRootPath + "/" + nodeName, false, s);
 		return ServerData.parseFrom(data);
+	}
+	
+	public ServerData getServerZnodeDataByProtocolSocketAddress(InetSocketAddress socketAddress) throws KeeperException, InterruptedException, InvalidProtocolBufferException
+	{
+		return getServerZnodeDataByNodeName( getHostColonPort(socketAddress.toString()) );
 	}
 	
 	//testing

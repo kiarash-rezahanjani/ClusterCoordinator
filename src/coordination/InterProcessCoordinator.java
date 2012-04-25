@@ -69,6 +69,7 @@ public class InterProcessCoordinator implements Watcher{
 			zkCli = new ZookeeperClient(this, config);
 			zkCli.createServerZnode(getInitialServerData());
 
+			//for testing
 			if(configFile=="applicationProperties")
 				protocol = new Protocol(this, true);
 			else
@@ -202,7 +203,7 @@ public class InterProcessCoordinator implements Watcher{
 					break;
 				Thread.sleep(1000);
 			}
-			
+
 			list = new ArrayList<InetSocketAddress>();
 
 			for(ServerData s : sortedServers)
@@ -227,6 +228,21 @@ public class InterProcessCoordinator implements Watcher{
 		return list;
 	}
 
+
+	public void createEnsemble(List<InetSocketAddress> ensembleMembers) 
+	{
+		for(InetSocketAddress socketAddress : ensembleMembers)
+		{
+			try {
+				ServerData serverData = zkCli.getServerZnodeDataByProtocolSocketAddress(socketAddress);
+				System.out.println("Ensemble Member Server Socket: "+serverData.getBufferServerSocketAddress());
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+				System.exit(-1);
+			} 
+		}
+	}
 
 	//--------------------------
 	//@Override

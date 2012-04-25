@@ -14,7 +14,7 @@ public class EnsemblesMetaData {
 	HashMap<String, String> serverToEnsemble = new HashMap<String, String>();
 	HashMap<String, EnsembleData> ensembleToData = new HashMap<String, EnsembleData>();
 	List<String> leaderOfEnsembles = new ArrayList<String>();
-	String mySocketAddress;
+	String protocolSocketAddress;
 	
 
 	public EnsemblesMetaData(Configuration config)
@@ -37,7 +37,7 @@ public class EnsemblesMetaData {
 		List<EnsembleData.Member> members = data.getMembersList();	
 		ensembleToData.put(ensemblePath, data);
 
-		if(leader==mySocketAddress)
+		if(leader==protocolSocketAddress)
 			leaderOfEnsembles.add(ensemblePath);
 
 		for(EnsembleData.Member member : members)
@@ -92,7 +92,7 @@ public class EnsemblesMetaData {
 			
 			List<EnsembleData.Member> members = data.getMembersList();
 
-			if(leader==mySocketAddress)
+			if(leader==protocolSocketAddress)
 				leaderOfEnsembles.add((String)key);
 
 			for(EnsembleData.Member member : members)
