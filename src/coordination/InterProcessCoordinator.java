@@ -49,7 +49,8 @@ public class InterProcessCoordinator implements Watcher{
 	Configuration config;
 	static final String defaultConfigFile = "applicationProperties";
 	final int SATURATION_POINT=100;
-	InetSocketAddress currentLeader=null;
+	boolean operationLeader=false;
+	//InetSocketAddress currentLeader=null;
 
 	//clients
 	//...
@@ -113,11 +114,11 @@ public class InterProcessCoordinator implements Watcher{
 	public Status getStatusHandle() {
 		return status;	
 	}
-	
+
 	public ZookeeperClient getZkHandle() {
 		return zkCli;	
 	}
-	
+
 	public Status getLastCheckpointedStatus(){
 		return lastCheckpointedStatus;
 	}
@@ -127,6 +128,9 @@ public class InterProcessCoordinator implements Watcher{
 		return config;
 	}
 
+	public boolean isLeader(){
+		return operationLeader;
+	}
 	//status needs to be synchronized, so we need an object to enable fine grained synchronization
 	public class Status
 	{
@@ -239,7 +243,7 @@ public class InterProcessCoordinator implements Watcher{
 		return list;
 	}
 
-	
+
 	public boolean followerCreatesEnsemble(List<InetSocketAddress> ensembleMembers) 
 	{
 		for(InetSocketAddress socketAddress : ensembleMembers)
@@ -266,19 +270,45 @@ public class InterProcessCoordinator implements Watcher{
 
 	public String leaderCreatesEnsemble(List<InetSocketAddress> ensembleMembers)
 	{
-		return null;
+		EnsembleData.Builder ensembleData = EnsembleData.newBuilder();
+		String fullPath=null;
+		int minCapacity = SATURATION_POINT;
+		try {
+			for(InetSocketAddress ensembleMember : ensembleMembers)
+			{
+
+				ServerData serverData = zkCli.getServerZnodeDataByProtocolSocketAddress(ensembleMember);
+
+				EnsembleData.Member.Builder member = EnsembleData.Member.newBuilder();
+				member.setSocketAddress(ensembleMember.toString());
+				ensembleData.addMembers(member);
+
+				if(serverData.getCapacityLeft() < minCapacity)
+					minCapacity=serverData.getCapacityLeft();
+			}
+
+			ensembleData.setCapacityLeft(minCapacity);
+			ensembleData.setStat(EnsembleData.Status.REJECT_CONNECTION);
+			ensembleData.setLeader(config.getProtocolSocketAddress().toString());
+
+			fullPath = zkCli.createEnsembleZnode(ensembleData.build());
+		} catch (Exception e) {
+			e.printStackTrace();
+			System.exit(-1);
+		}
+		return fullPath;
 	}
-	
+
 	public void followerStartsService()
 	{
-		
+
 	}
-	
+
 	public void leaderStartsService()
 	{
-		
+
 	}
-	
+
 	//--------------------------
 	//@Override
 	public void run() {
