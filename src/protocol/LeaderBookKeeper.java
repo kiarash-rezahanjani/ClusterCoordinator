@@ -23,6 +23,17 @@ public class LeaderBookKeeper {
 	private HashMap<InetSocketAddress, Boolean> connectedNodeList 
 	= new HashMap<InetSocketAddress, Boolean>();
 	
+	private List<InetSocketAddress> ensembleMembers 
+	= new ArrayList<InetSocketAddress>();
+	
+	public List<InetSocketAddress> getEnsembleMembers() {
+		return ensembleMembers;
+	}
+
+	public void setEnsembleMembers(List<InetSocketAddress> ensembleMembers) {
+		this.ensembleMembers = ensembleMembers;
+	}
+
 	public LeaderBookKeeper(int ensembleSize)
 	{
 		this.ensembleSize=ensembleSize;

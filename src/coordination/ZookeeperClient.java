@@ -23,7 +23,7 @@ import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.Stat;
-
+import org.apache.zookeeper.AsyncCallback;
 
 import utility.Configuration;
 import utility.NetworkUtil;
@@ -39,13 +39,14 @@ import com.google.protobuf.InvalidProtocolBufferException;
 public class ZookeeperClient implements Closeable{
 
 	static ZooKeeper zk = null;
-	String zkConnectionString = "localhost:2181";
+	String zkConnectionString ;
 	int sessionTimeOut = 3000;
-	String nameSpace = "/logservice";
-	String serverRootPath = nameSpace + "/servers";
-	String serversGlobalViewPath = serverRootPath;//logServiceRootPath + "/serversFullView";
-	String ensembleRootPath = nameSpace + "/ensembles";
-	String myServerZnodePath = null;
+	String nameSpace ;
+	String serverRootPath ;
+	String serversGlobalViewPath;//logServiceRootPath + "/serversFullView";
+	String ensembleRootPath ;
+	String clientRootPath ;
+	String myServerZnodePath;
 	String ensembleMembersZnodeName = "ensembleMembers"; 
 	Configuration config;
 
@@ -53,6 +54,13 @@ public class ZookeeperClient implements Closeable{
 	public ZookeeperClient( Watcher watcher, Configuration config) throws KeeperException, IOException, InterruptedException
 	{
 		this.config = config;
+		zkConnectionString = config.getZkConnectionString();
+		sessionTimeOut = config.getZkSessionTimeOut();
+		nameSpace = config.getZkNameSpace();
+		serverRootPath = nameSpace + config.getZkServersRoot();
+		serversGlobalViewPath = nameSpace + config.getZkServersGlobalViewRoot();//logServiceRootPath + "/serversFullView";
+		ensembleRootPath = nameSpace + config.getZkEnsemblesRoot();
+
 		
 		if(zk==null)
 		{
@@ -183,13 +191,38 @@ public class ZookeeperClient implements Closeable{
 	{
 		return zk.getChildren(serverRootPath, false);
 	}
+	
+	public Stat setServerFailureDetector(String nodeName)
+	{
+		Stat stat=null;
+		try {
+			stat = zk.exists(serverRootPath + "/" + nodeName, true);
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			System.exit(-1);
+		} 
+		return stat;
+	}
+	
+	public Stat setServerFailureDetector(InetSocketAddress protocolSocketAddress)
+	{
+		return setServerFailureDetector(getHostColonPort(protocolSocketAddress.toString()));
+	}
 
 	//--------------------------- Ensemble-----------------------------------------------------------------------
 
+	/**
+	 * Create a permanent Znode as ensemble Znode.
+	 * @param Initial data
+	 * @return The actual path of the Znode
+	 * @throws KeeperException
+	 * @throws InterruptedException
+	 */
 	public String createEnsembleZnode(EnsembleData data) throws KeeperException, InterruptedException
 	{
 		String ensemblePath = zk.create(ensembleRootPath+"/ensemble-", data.toByteArray(), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT_SEQUENTIAL);
-		zk.create( ensemblePath + "/" + ensembleMembersZnodeName, new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT );
+		//zk.create( ensemblePath + "/" + ensembleMembersZnodeName, new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT );
 		return ensemblePath;
 	}
 

@@ -10,7 +10,7 @@ import utility.Znode.EnsembleData;
 
 public class EnsemblesMetaData {
 
-	Configuration config;
+	final Configuration config;
 	HashMap<String, String> serverToEnsemble = new HashMap<String, String>();
 	HashMap<String, EnsembleData> ensembleToData = new HashMap<String, EnsembleData>();
 	List<String> leaderOfEnsembles = new ArrayList<String>();

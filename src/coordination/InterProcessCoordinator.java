@@ -13,6 +13,7 @@ import java.util.Random;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.data.Stat;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 
@@ -44,9 +45,11 @@ public class InterProcessCoordinator implements Watcher{
 	int totalLoad ;//later on replaced by an object containing cpu memory and bandwidth consumption
 	ServersGlobalView serversGlobalView;
 	Status status = new Status(ServerStatus.ALL_FUNCTIONAL_ACCEPT_REQUEST);
+	Status lastCheckpointedStatus = new Status(ServerStatus.ALL_FUNCTIONAL_ACCEPT_REQUEST);
 	Configuration config;
 	static final String defaultConfigFile = "applicationProperties";
 	final int SATURATION_POINT=100;
+	InetSocketAddress currentLeader=null;
 
 	//clients
 	//...
@@ -109,6 +112,14 @@ public class InterProcessCoordinator implements Watcher{
 
 	public Status getStatusHandle() {
 		return status;	
+	}
+	
+	public ZookeeperClient getZkHandle() {
+		return zkCli;	
+	}
+	
+	public Status getLastCheckpointedStatus(){
+		return lastCheckpointedStatus;
 	}
 
 	public Configuration getConfigurationHandle()
@@ -228,13 +239,20 @@ public class InterProcessCoordinator implements Watcher{
 		return list;
 	}
 
-
-	public void createEnsemble(List<InetSocketAddress> ensembleMembers) 
+	
+	public boolean followerCreatesEnsemble(List<InetSocketAddress> ensembleMembers) 
 	{
 		for(InetSocketAddress socketAddress : ensembleMembers)
 		{
 			try {
+				Stat stat = zkCli.setServerFailureDetector(socketAddress);
+				if(stat==null)
+				{
+					System.out.println("Null server node. doesnt exist!");
+					System.exit(-1);
+				}
 				ServerData serverData = zkCli.getServerZnodeDataByProtocolSocketAddress(socketAddress);
+				zkCli.setServerFailureDetector(socketAddress);
 				System.out.println("Ensemble Member Server Socket: "+serverData.getBufferServerSocketAddress());
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
@@ -242,8 +260,25 @@ public class InterProcessCoordinator implements Watcher{
 				System.exit(-1);
 			} 
 		}
+
+		return true;
 	}
 
+	public String leaderCreatesEnsemble(List<InetSocketAddress> ensembleMembers)
+	{
+		return null;
+	}
+	
+	public void followerStartsService()
+	{
+		
+	}
+	
+	public void leaderStartsService()
+	{
+		
+	}
+	
 	//--------------------------
 	//@Override
 	public void run() {
@@ -253,7 +288,45 @@ public class InterProcessCoordinator implements Watcher{
 
 	@Override
 	public void process(WatchedEvent event) {
-		// TODO Auto-generated method stub
+
+		String path = event.getPath();
+
+		if (event.getType()== Event.EventType.NodeDeleted)
+		{
+			if(path.contains(config.getZkServersRoot()))
+				serverFailure(path);
+
+			if(path.contains(config.getZkClientRoot()))
+				clientFailure(path);
+		}
+
+		if (event.getType() == Event.EventType.None) 
+		{
+			// We are are being told that the state of the
+			// connection has changed
+			switch (event.getState()) {
+			case SyncConnected:
+				// In this particular example we don't need to do anything
+				// here - watches are automatically re-registered with 
+				// server and any watches triggered while the client was 
+				// disconnected will be delivered (in order of course)
+				break;
+			case Expired:
+				// It's all over
+				System.out.println("Zookeeper Connection is dead");
+				System.exit(-1);
+				break;
+			}
+		}
+	}
+
+	private void clientFailure(String path) {
+		System.out.println("ServerDead:"+path);
+
+	}
+
+	private void serverFailure(String path) {
+		System.out.println("ClientDead:"+path);
 
 	}
 
