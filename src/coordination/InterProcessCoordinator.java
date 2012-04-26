@@ -126,11 +126,11 @@ public class InterProcessCoordinator implements Watcher{
 
 	public boolean isLeader(){
 		if(status.getStatus()==ServerStatus.FORMING_ENSEMBLE_LEADER_STARTED
-			||status.getStatus()==ServerStatus.FORMING_ENSEMBLE_LEADER_WAIT_FOR_ACCEPT
-			||status.getStatus()==ServerStatus.FORMING_ENSEMBLE_LEADER_WAIT_FOR_CONNECTED_SIGNAL
-			||status.getStatus()==ServerStatus.FORMING_ENSEMBLE_LEADER_EXEC_ROLL_BACK
-			||status.getStatus()==ServerStatus.FIXING_ENSEMBLE_LEADER_WAIT_FOR_ACCEPT
-			||status.getStatus()==ServerStatus.FIXING_ENSEMBLE_LEADER_WAIT_FOR_CONNECTED_SIGNAL)
+				||status.getStatus()==ServerStatus.FORMING_ENSEMBLE_LEADER_WAIT_FOR_ACCEPT
+				||status.getStatus()==ServerStatus.FORMING_ENSEMBLE_LEADER_WAIT_FOR_CONNECTED_SIGNAL
+				||status.getStatus()==ServerStatus.FORMING_ENSEMBLE_LEADER_EXEC_ROLL_BACK
+				||status.getStatus()==ServerStatus.FIXING_ENSEMBLE_LEADER_WAIT_FOR_ACCEPT
+				||status.getStatus()==ServerStatus.FIXING_ENSEMBLE_LEADER_WAIT_FOR_CONNECTED_SIGNAL)
 			return true;
 		else
 			return false;
@@ -273,21 +273,25 @@ public class InterProcessCoordinator implements Watcher{
 
 		return true;
 	}
-/**
- * change: data can be set at startService time rather than here. here we can just set 0 byte[].
- * @param ensembleMembers
- * @return
- */
+	/**
+	 * change: data can be set at startService time rather than here. here we can just set 0 byte[].
+	 * @param ensembleMembers
+	 * @return
+	 */
 	public String leaderCreatesEnsemble(List<InetSocketAddress> ensembleMembers)
 	{
 		EnsembleData.Builder ensembleData = EnsembleData.newBuilder();
 		String absolutePath=null;
 		int minCapacity = SATURATION_POINT;
+
 		try {
 			for(InetSocketAddress ensembleMember : ensembleMembers)
 			{
 
-				ServerData serverData = zkCli.getServerZnodeDataByProtocolSocketAddress(ensembleMember);
+				ServerData serverData;
+
+				serverData = zkCli.getServerZnodeDataByProtocolSocketAddress(ensembleMember);
+
 				//System.out.println("ServerData:" + serverData.getCapacityLeft());
 				EnsembleData.Member.Builder member = EnsembleData.Member.newBuilder();
 				member.setSocketAddress(ensembleMember.toString());
@@ -302,10 +306,23 @@ public class InterProcessCoordinator implements Watcher{
 			ensembleData.setLeader(config.getProtocolSocketAddress().toString());
 
 			absolutePath = zkCli.createEnsembleZnode(ensembleData.build());
-		} catch (Exception e) {
+
+		} catch (InvalidProtocolBufferException e) {
+			// TODO Auto-generated catch block
 			e.printStackTrace();
-			System.exit(-1);
+		} catch (KeeperException e) {
+			// TODO Auto-generated catch block
+		
+			//although there is no need for this code but let it be there
+			if(e.code() == KeeperException.Code.NONODE)
+				absolutePath = null;
+			
+			e.printStackTrace();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
+		
 		return absolutePath;
 	}
 
@@ -319,16 +336,16 @@ public class InterProcessCoordinator implements Watcher{
 		try {
 			ensembleData = zkCli.getEnsembleData(ensemblePath);
 			mbk.put(ensemblePath, ensembleData);
-		//	updateServerZnodeEnsembles(ensemblePath, 1);
+			//	updateServerZnodeEnsembles(ensemblePath, 1);
 			System.out.print("Folowers READ : " + config.getProtocolPort() + " Cap: " + ensembleData.getCapacityLeft()
 					+ " Leader: " + ensembleData.getLeader()+ " Members: " + ensembleData.getMembersList() + " stat: " + ensembleData.getStat() );
-	
+
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 			System.exit(-1);
 		} 
-		
+
 	}
 	/**
 	 * Add or remove ensemble from Server zonde ensemble list.
@@ -345,14 +362,14 @@ public class InterProcessCoordinator implements Watcher{
 				ensembleList.remove(ensemblePath);
 			else
 				ensembleList.add(ensemblePath);
-			
+
 			zkCli.updateServerZnode(serverData.newBuilder().clearEnsembleList().addAllEnsembleList(ensembleList).build() );
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 			System.exit(-1);
 		}
-		
+
 
 	}
 
@@ -364,7 +381,7 @@ public class InterProcessCoordinator implements Watcher{
 	{
 		EnsembleData ensembleData;
 		try {
-			
+
 			ensembleData = zkCli.getEnsembleData(ensemblePath);
 			ensembleData = ensembleData.newBuilder(ensembleData).setStat(EnsembleData.Status.ACCPT_CONNECTION).build();
 			zkCli.updateEnsembleZnode(ensemblePath, ensembleData);
@@ -393,9 +410,11 @@ public class InterProcessCoordinator implements Watcher{
 
 		if (event.getType()== Event.EventType.NodeDeleted)
 		{
+			//if the failed node is a server
 			if(path.contains(config.getZkServersRoot()))
 				serverFailure(path);
-
+			
+			//if the failed node is a client
 			if(path.contains(config.getZkClientRoot()))
 				clientFailure(path);
 		}
@@ -429,15 +448,19 @@ public class InterProcessCoordinator implements Watcher{
 	{
 		if(!path.contains("/"))
 			return path;
-		
+
 		return getNameOutOfPath(path.substring( path.indexOf("/")+1 ) );
 	}
-*/
+	 */
 	private void serverFailure(String path) {
 		System.out.println("ClientDead:"+path);
-		protocol.rollBack();
+		if(isLeader()){
+			System.out.println("leader status befo roll"+	status.getStatus());
+			protocol.rollBack();
+		System.out.println("leader status aftter roll"+	status.getStatus());
+		}
 		//if(isLeader() && protocol.getLeaderBookKeeperHandle().getAcceptedList().toString().contains(path))
-		
+
 		//if from current forming ensemble then roll back operation
 		//if not see which ensemble it is 
 		//start logging synchronously for that ensemble

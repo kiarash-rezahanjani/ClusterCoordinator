@@ -1,0 +1,12 @@
+package serialization;
+
+option java_package = "utility";
+option java_outer_classname = "Log";
+
+message LogEntry
+{
+	required string dbId = 1;
+	required int64 messageId =2;
+	required string key = 3;
+	required string operation = 4;
+}

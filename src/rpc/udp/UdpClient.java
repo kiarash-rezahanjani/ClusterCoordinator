@@ -45,7 +45,7 @@ public final class UdpClient {
 	}
 	
 	public void sendAsyncMessage(final InetSocketAddress iNetSocketAddress, final Object message) throws IOException {
-		System.out.println("sendAsyncMessage"+iNetSocketAddress.toString());
+	//	System.out.println("sendAsyncMessage "+iNetSocketAddress.toString());
 		ChannelFuture future = channel.write(message, iNetSocketAddress);
 		try {
 			Thread.sleep(1);

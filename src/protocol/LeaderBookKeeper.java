@@ -33,6 +33,15 @@ public class LeaderBookKeeper {
 	private List<InetSocketAddress> ensembleMembers 
 	= new ArrayList<InetSocketAddress>();
 	
+	boolean ensembleConnected = false;
+
+	public boolean isEnsembleConnected() {
+		return ensembleConnected;
+	}
+
+	public void setEnsembleConnected(boolean ensembleConnected) {
+		this.ensembleConnected = ensembleConnected;
+	}
 
 	/**
 	 * Sets a list of all members of the ensemble including the leader.
