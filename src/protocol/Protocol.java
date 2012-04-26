@@ -41,7 +41,16 @@ public class Protocol implements ReceivedMessageCallBack {
 		if(leader)
 			leaderStartsFormingEnsemble(3);
 	}
+	
+	public LeaderBookKeeper getLeaderBookKeeperHandle()
+	{
+		return lbk;
+	}
 
+	public FollowerBookkeeper getFollowerBookkeeperHandle()
+	{
+		return fbk;
+	}
 	@Override 
 	public void received(Object msg, InetSocketAddress srcSocketAddress) {
 		// TODO Auto-generated method stub
@@ -63,6 +72,9 @@ public class Protocol implements ReceivedMessageCallBack {
 			{
 
 			case ServerStatus.ALL_FUNCTIONAL_ACCEPT_REQUEST:
+				if(message.getMessageType()== MessageType.ACCEPTED_JOIN_ENSEMBLE_REQUEST)
+					abortOperation(message.getSrcSocketAddress());
+				
 				addStat();
 				followerAcceptRequest(message, statusHandle);
 				addStat();
@@ -72,7 +84,9 @@ public class Protocol implements ReceivedMessageCallBack {
 				break;
 				//======================================================================================
 			case ServerStatus.FORMING_ENSEMBLE_LEADER_STARTED: 
-
+				if(message.getMessageType()== MessageType.ACCEPTED_JOIN_ENSEMBLE_REQUEST)
+					abortOperation(message.getSrcSocketAddress());
+					
 				break;
 				//======================================================================================
 			case ServerStatus.FORMING_ENSEMBLE_LEADER_WAIT_FOR_ACCEPT: 
@@ -84,6 +98,9 @@ public class Protocol implements ReceivedMessageCallBack {
 				break;
 				//======================================================================================
 			case ServerStatus.FORMING_ENSEMBLE_LEADER_WAIT_FOR_CONNECTED_SIGNAL: 
+				if(message.getMessageType()== MessageType.ACCEPTED_JOIN_ENSEMBLE_REQUEST)
+					abortOperation(message.getSrcSocketAddress());
+				
 				addStat();
 				leaderWaitForConnectedSignal(message, statusHandle);
 				addStat();
@@ -113,6 +130,7 @@ public class Protocol implements ReceivedMessageCallBack {
 			case ServerStatus.FORMING_ENSEMBLE_NOT_LEADER_WAIT_FOR_START_SIGNAL:
 				addStat();
 				followerWaitForStartService(message, statusHandle);
+				addStat();
 				printStattransition();
 				break;		
 				//======================================================================================
@@ -237,11 +255,17 @@ public class Protocol implements ReceivedMessageCallBack {
 			{
 				status.setStatus(ServerStatus.ALL_FUNCTIONAL_ACCEPT_REQUEST);
 				String ensemblePath = cdrHandle.leaderCreatesEnsemble(lbk.getEnsembleMembers());
+				if(ensemblePath==null)
+				{
+					rollBack();
+					return;
+				}
 				for(InetSocketAddress sa : lbk.getConnectedList())
 				{
 					startServiceSignal(sa, ensemblePath);
 					//System.out.println("sending start sig to:"+ sa.toString());
 				}
+				cdrHandle.leaderStartsService(ensemblePath);
 			}
 		}
 		if(message.getMessageType()== MessageType.FAILED_ENSEMBLE_CONNECTION)
@@ -273,13 +297,21 @@ public class Protocol implements ReceivedMessageCallBack {
 	}
 
 	void followerStartConnections(ProtocolMessage message, Status status)
-	{
+	{		//testing
+		try {
+			Thread.sleep(5500);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		if(message.getMessageType()==MessageType.START_ENSEMBLE_CONNECTION )
 		{
+			status.setStatus(ServerStatus.FORMING_ENSEMBLE_NOT_LEADER_CONNECTING);
+			addStat();
 			List<InetSocketAddress> ensembleMembers = (List<InetSocketAddress> ) message.msgContent;
 			fbk.setEnsembleMembers(ensembleMembers);
 			System.out.println( "Start Connecting to: " + ensembleMembers );		
-			boolean success = cdrHandle.followerCreatesEnsemble(ensembleMembers);
+			boolean success = cdrHandle.followerConnectsEnsemble(ensembleMembers);
 
 			if(success)
 			{			
@@ -298,9 +330,11 @@ public class Protocol implements ReceivedMessageCallBack {
 
 	void followerWaitForStartService(ProtocolMessage message, Status statusHandle)
 	{
+
 		if(message.getMessageType()==MessageType.START_SERVICE)
 		{
 			String ensemblePath = message.getMsgContent().toString();
+			System.out.println("FOLLOWER:"+ ensemblePath);
 			if(ensemblePath==null || ensemblePath.length()==0)
 			{
 				System.out.println("followerWaitForStartService() ensemblepath null!");
@@ -308,14 +342,15 @@ public class Protocol implements ReceivedMessageCallBack {
 			}
 
 			fbk.setEnsemblePath(ensemblePath);
-
-			cdrHandle.followerStartsService();
+			cdrHandle.followerStartsService(ensemblePath);
+			
 			statusHandle.setStatus(ServerStatus.ALL_FUNCTIONAL_ACCEPT_REQUEST);// need to check if there is enough capacity left
 			//signal the coordinator
 		}
 
 		if(message.getMessageType()==MessageType.OPERATION_FAILED )
-			;
+			rollBack();
+		
 	}
 
 
@@ -379,15 +414,17 @@ public class Protocol implements ReceivedMessageCallBack {
 	 * 	Might have to think harder rolling back the status , maybe checkpoint the status before forming an ensemble
 	 *  If already connection are established and we receive cancel then other data structure have to e garbage collected
 	 */
-	void rollBack()
+	public void rollBack()
 	{
+		addStat();
 		//if I am the leader send abort operation to all the followers
 		if(cdrHandle.isLeader()==true)
 		{
 			for(InetSocketAddress follower : lbk.getAcceptedList())
 				abortOperation(follower);
 		}
-
+		addStat();
+		printStattransition();
 		lbk.clear();
 		fbk.clear();
 		//recover the latest status before start of operation 

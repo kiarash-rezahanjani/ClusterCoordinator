@@ -8,6 +8,13 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+
+/**
+ * Maintain data required by leader for managing in-progress operation 
+ * such as forming or repairing ensemble. 
+ * @author root
+ *
+ */
 public class LeaderBookKeeper {
 	private int ensembleSize = 3;
 	
@@ -26,12 +33,21 @@ public class LeaderBookKeeper {
 	private List<InetSocketAddress> ensembleMembers 
 	= new ArrayList<InetSocketAddress>();
 	
-	public List<InetSocketAddress> getEnsembleMembers() {
-		return ensembleMembers;
-	}
 
+	/**
+	 * Sets a list of all members of the ensemble including the leader.
+	 * @param List of all members of the ensemble including the leader
+	 */
 	public void setEnsembleMembers(List<InetSocketAddress> ensembleMembers) {
 		this.ensembleMembers = ensembleMembers;
+	}
+
+	/**
+	 * Gets list of all members of the ensemble including the leader
+	 * @return List of all members of the ensemble including the leader
+	 */
+	public List<InetSocketAddress> getEnsembleMembers() {
+		return ensembleMembers;
 	}
 
 	public LeaderBookKeeper(int ensembleSize)
