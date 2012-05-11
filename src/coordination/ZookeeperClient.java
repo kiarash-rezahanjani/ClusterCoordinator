@@ -61,11 +61,9 @@ public class ZookeeperClient implements Closeable{
 		serversGlobalViewPath = nameSpace + config.getZkServersGlobalViewRoot();//logServiceRootPath + "/serversFullView";
 		ensembleRootPath = nameSpace + config.getZkEnsemblesRoot();
 
-		
 		if(zk==null)
 		{
 			zk = new ZooKeeper(zkConnectionString, sessionTimeOut, watcher);	
-			
 			createRoot(nameSpace);
 			createRoot(serverRootPath);
 			createRoot(serversGlobalViewPath);

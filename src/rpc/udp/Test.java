@@ -15,7 +15,7 @@ public class Test {
 	/**
 	 * @param args
 	 */
-
+/*
 	static void checkClientServerCommunication()
 	{
 		ReceivedMessageCallBack callback = new  ReceivedMessageCallBack()
@@ -67,7 +67,7 @@ public class Test {
 				System.out.println("\n\n");
 
 */
-			}
+/*			}
 		};
 
 		ReceivedMessageCallBack callback2 = new ReceivedMessageCallBack()
@@ -85,7 +85,7 @@ public class Test {
 				System.out.println("\n\n");
 */
 
-			}
+	/*		}
 		};
 
 		SenderReceiver sr1 = new SenderReceiver(callback1, 1111);
@@ -127,5 +127,5 @@ public class Test {
 		//checkCheckSenerReceiver();
 		System.out.println(NetworkUtil.parseInetSocketAddress("localhost:122").toString());
 	}
-
+*/
 }

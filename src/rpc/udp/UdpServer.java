@@ -1,5 +1,6 @@
 package rpc.udp;
 
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.concurrent.ExecutorService;
@@ -14,10 +15,11 @@ import org.jboss.netty.channel.socket.nio.NioDatagramChannelFactory;
 import protocol.ReceivedMessageCallBack;
 
 //import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import utility.Configuration;
 
 public final class UdpServer {
-        
-        public static final int DEFAULT_PORT = 9999;
+		
+        public static final int DEFAULT_PORT = 1111;
         
         private int port;
         
@@ -33,14 +35,15 @@ public final class UdpServer {
         
         private ReceivedMessageCallBack callback;
         
+        Configuration config ;
         //private InetSocketAddress serverSocketAddres;
-        
+ /*       
         public UdpServer(ReceivedMessageCallBack callback) {
                 this(DEFAULT_PORT, callback);
         }
-        
-        public UdpServer(int port, ReceivedMessageCallBack callback) {
-                this.port = port;
+   */     
+        public UdpServer(Configuration config , ReceivedMessageCallBack callback) {
+                this.port = config.getProtocolPort();
                 this.callback = callback;
         }
         
@@ -82,7 +85,7 @@ public final class UdpServer {
         public InetSocketAddress getServerSocketAddress()
         {
         	//for testing
-        	return (new InetSocketAddress("localhost",port));
+        	return (new InetSocketAddress("localhost", port));
         	//return (InetSocketAddress) serverChannel.getLocalAddress();
         }
         

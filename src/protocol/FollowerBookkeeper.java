@@ -5,9 +5,9 @@ import java.util.List;
 
 public class FollowerBookkeeper {
 
-	InetSocketAddress leader;
+	InetSocketAddress leader = null;
 	List<InetSocketAddress> ensembleMembers;
-	String ensemblePath;
+	String ensemblePath = null ;
 
 	public List<InetSocketAddress> getEnsembleMembers() {
 		return ensembleMembers;
@@ -18,9 +18,9 @@ public class FollowerBookkeeper {
 	}
 
 	public FollowerBookkeeper() {
-	
+
 	}
-	
+
 	public InetSocketAddress getLeader() {
 		return leader;
 	}
@@ -31,18 +31,21 @@ public class FollowerBookkeeper {
 
 	public void clear()
 	{
-		leader=null;
+		leader = null;
+		if(ensembleMembers!=null)
+			ensembleMembers.clear();
+		ensemblePath = null;
 	}
-	
+
 	public boolean isEmpty()
 	{
-		return leader==null;
+		return leader==null && ensembleMembers.isEmpty() && ensemblePath == null;
 	}
-	
+
 	public String getEnsemblePath() {
 		return ensemblePath;
 	}
-	
+
 	public void setEnsemblePath(String ensemblePath) {
 		this.ensemblePath = ensemblePath;
 	}

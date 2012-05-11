@@ -4,6 +4,7 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import org.apache.zookeeper.data.Stat;
 
@@ -11,6 +12,7 @@ import coordination.InterProcessCoordinator;
 import coordination.InterProcessCoordinator.ServerStatus;
 import coordination.InterProcessCoordinator.Status;
 import rpc.udp.SenderReceiver;
+import utility.Configuration;
 import utility.Znode.ServerData;
 
 public class Protocol implements ReceivedMessageCallBack {
@@ -18,26 +20,29 @@ public class Protocol implements ReceivedMessageCallBack {
 	private SenderReceiver senderReceiver;
 	InterProcessCoordinator cdrHandle;
 
-	LeaderBookKeeper lbk = new LeaderBookKeeper();
-	FollowerBookkeeper fbk = new FollowerBookkeeper();
-
-
-	public Protocol(InterProcessCoordinator interProcessCoordinator) 
-	{
-		// TODO Auto-generated constructor stub
-
+	LeaderBookKeeper lbk ;//= new LeaderBookKeeper();
+	FollowerBookkeeper fbk ;//= new FollowerBookkeeper();
+	Configuration config;
+	
+	public Protocol(Configuration config, InterProcessCoordinator interProcessCoordinator, LeaderBookKeeper lbk, FollowerBookkeeper fbk) {
+		
+		this.config = config;
+		this.lbk = lbk;
+		this.fbk = fbk;
 		this.cdrHandle = interProcessCoordinator;
-		senderReceiver = new SenderReceiver(this, cdrHandle.getConfigurationHandle().getProtocolPort());
+		senderReceiver = new SenderReceiver(config, this);
 	}
 
 	//for testing only
 	boolean leader=false;
 	//InetSocketAddress destination;
-	public Protocol(InterProcessCoordinator interProcessCoordinator, boolean leader) 
+	public Protocol(Configuration config, InterProcessCoordinator interProcessCoordinator, boolean leader, LeaderBookKeeper lbk, FollowerBookkeeper fbk) 
 	{
-		// TODO Auto-generated constructor stub
+		this.config = config;
+		this.lbk = lbk;
+		this.fbk = fbk;
 		this.cdrHandle = interProcessCoordinator;
-		senderReceiver = new SenderReceiver(this, cdrHandle.getConfigurationHandle().getProtocolPort());
+		senderReceiver = new SenderReceiver(config, this);
 		this.leader=leader;
 		if(leader)
 			leaderStartsFormingEnsemble(4);
@@ -60,6 +65,8 @@ public class Protocol implements ReceivedMessageCallBack {
 
 	void processMessage(ProtocolMessage message)
 	{
+		System.out.println("From: " + message.getSrcSocketAddress().getPort() + " To: " + senderReceiver.getServerSocketAddress().getPort() 
+				+ " MsgType: " + message.getMessageType() + " Server: " + cdrHandle.getStatusHandle().getStatus());
 		//addStat();
 		//System.out.println("OOOO");
 		//		Short s =cdrHandle.getStatus();
@@ -67,7 +74,7 @@ public class Protocol implements ReceivedMessageCallBack {
 		//short msgType = message.getMessageType();
 		//InetSocketAddress srcSocketAddress = message.getSrcSocketAddress();
 		//System.out.println("Message recev contained des add: "+srcSocketAddress.toString());
-		synchronized(statusHandle)
+	//	synchronized(statusHandle)
 		{
 			switch(statusHandle.getStatus())
 			{
@@ -80,8 +87,6 @@ public class Protocol implements ReceivedMessageCallBack {
 				followerAcceptRequest(message, statusHandle);
 				addStat();
 
-				//	if(message.getMessageType() == MessageType.LEAVING_ENSEMBLE)
-				//		;
 				break;
 				//======================================================================================
 			case ServerStatus.FORMING_ENSEMBLE_LEADER_STARTED: 
@@ -105,7 +110,7 @@ public class Protocol implements ReceivedMessageCallBack {
 				addStat();
 				leaderWaitForConnectedSignal(message, statusHandle);
 				addStat();
-				printStattransition();
+				//printStattransition();
 				break;
 				//======================================================================================
 			case ServerStatus.FORMING_ENSEMBLE_LEADER_EXEC_ROLL_BACK: 
@@ -132,7 +137,7 @@ public class Protocol implements ReceivedMessageCallBack {
 				addStat();
 				followerWaitForStartService(message, statusHandle);
 				addStat();
-				printStattransition();
+				//printStattransition();
 				break;		
 				//======================================================================================
 			case ServerStatus.FORMING_ENSEMBLE_NOT_LEADER_ROLL_BACK_ALL_OPERATIONS: 
@@ -168,29 +173,21 @@ public class Protocol implements ReceivedMessageCallBack {
 
 		Status status = cdrHandle.getStatusHandle();
 
-		synchronized(status)
-		{
-			//addStat();
+	//	synchronized(status){
 			if(status.getStatus()!=ServerStatus.ALL_FUNCTIONAL_ACCEPT_REQUEST  
-					&& status.getStatus()!=ServerStatus.FORMING_ENSEMBLE_LEADER_STARTED )
-			{
+					&& status.getStatus()!=ServerStatus.FORMING_ENSEMBLE_LEADER_STARTED ){
 				System.out.println("Formin ensemble while status.getStatus()!=ServerStatus.ALL_FUNCTIONAL_ACCEPT_REQUEST . ");
 				System.exit(-1);
 			}
-			//addStat();
-			if(!lbk.isEmpty())
-			{
+
+			if(!lbk.isEmpty()){
 				System.out.println("An attemp is made to form ensemble and Leaderbook Keeper is not empty. ");
 				System.exit(-1);
 			}
-			//addStat();
-			//System.out.println("1");
+			
 			List<InetSocketAddress> candidates = cdrHandle.getSortedCandidates();//get candidates
-			//System.out.println("2");
-			//System.out.println("Leader.My candidates: "+candidates);
 
-			if(candidates.size() < replicationFactor-1)
-			{
+			if(candidates.size() < replicationFactor-1){
 				System.out.println("candidates.size() < replicationFactor");
 				System.exit(-1);
 			}
@@ -201,13 +198,17 @@ public class Protocol implements ReceivedMessageCallBack {
 			status.setStatus(ServerStatus.FORMING_ENSEMBLE_LEADER_WAIT_FOR_ACCEPT);
 			addStat();
 			//-1 : leader is also part of the chain
-			for(int i=0 ; i<replicationFactor-1; i++)
-			{
+			for(int i=0 ; i<replicationFactor-1; i++){
 				joinRequest(candidates.get(i));
-				lbk.putRequestedNode(candidates.get(i), false);
+				Stat stat = cdrHandle.getZkHandle().setServerFailureDetector(candidates.get(i));
+				//System.out.println(senderReceiver.getServerSocketAddress()+" SET DETECTOR ON 1 " + candidates.get(i));
+				if(stat != null)
+					lbk.putRequestedNode(candidates.get(i), false);
 			}
-			//addStat();
-		}
+
+			if(lbk.getRequestedNodeList().size() < lbk.getEnsembleSize()-1)
+				rollBack("leaderStartsFormingEnsemble  lbk.getRequestedNodeList().size() < lbk.getEnsembleSize()-1");
+	//	}
 	}
 
 	void leaderFixEnsemble(int replicationFactor, List<InetSocketAddress> aliveNodes)
@@ -229,49 +230,53 @@ public class Protocol implements ReceivedMessageCallBack {
 				List<InetSocketAddress> listOfEnsembleServers = new ArrayList<InetSocketAddress>();
 				listOfEnsembleServers.addAll(lbk.getAcceptedList());
 
-				//set failure detector
+				/**
+				 * set failure detector
+				
 				for(InetSocketAddress protocolSocketAddress : listOfEnsembleServers)
 				{	
 					Stat stat = cdrHandle.getZkHandle().setServerFailureDetector(protocolSocketAddress);
 					if(stat==null)
 					{
-						rollBack();
+						//rollBack();
 						return;
 					}
 				}
+				 */
 				listOfEnsembleServers.add(0, senderReceiver.getServerSocketAddress());
 				lbk.setEnsembleMembers(listOfEnsembleServers);
 
 				for(InetSocketAddress sa : lbk.getAcceptedList())
 					connectSignal(sa, listOfEnsembleServers);
-
 			}
 		}
 
-		if(message.getMessageType()== MessageType.REJECTED_JOIN_ENSEMBLE_REQUEST)
+		if(message.getMessageType()== MessageType.REJECTED_JOIN_ENSEMBLE_REQUEST){
 			lbk.putAcceptedNode(message.getSrcSocketAddress(), false);
+			if(!lbk.waitForNextAcceptedMessage())
+				rollBack("leaderProcessWaitForAccept !lbk.waitForNextAcceptedMessage()");
+		}
 
 	}
 
 
 	void leaderWaitForConnectedSignal(ProtocolMessage message, Status status){
-		if(message.getMessageType()== MessageType.SUCEEDED_ENSEMBLE_CONNECTION)
-		{
+	//	System.out.println("leaderWaitForConnectedSignal: Rec Status:"+ message.getMessageType());
+
+		if(message.getMessageType()== MessageType.SUCEEDED_ENSEMBLE_CONNECTION){
 			lbk.putConnectedNode(message.getSrcSocketAddress(), true);
 
-			if(lbk.isConnectedComplete())
-			{
+			if(lbk.isConnectedComplete()){
 				addStat();
 				status.setStatus(ServerStatus.ALL_FUNCTIONAL_ACCEPT_REQUEST);
 				addStat();
+				printStattransition();
 				String ensemblePath = cdrHandle.leaderCreatesEnsemble(lbk.getEnsembleMembers());
-				if(ensemblePath==null)
-				{
-					rollBack();
+				if(ensemblePath==null){
+					rollBack("leaderWaitForConnectedSignal ensmble node creation failed");
 					return;
 				}
-				for(InetSocketAddress sa : lbk.getConnectedList())
-				{
+				for(InetSocketAddress sa : lbk.getConnectedList()){
 					startServiceSignal(sa, ensemblePath);
 					//System.out.println("sending start sig to:"+ sa.toString());
 				}
@@ -279,8 +284,11 @@ public class Protocol implements ReceivedMessageCallBack {
 			}
 		}
 
-		if(message.getMessageType()== MessageType.FAILED_ENSEMBLE_CONNECTION)
+		if(message.getMessageType()== MessageType.FAILED_ENSEMBLE_CONNECTION){
 			lbk.putConnectedNode(message.getSrcSocketAddress(), false);
+			if(!lbk.waitForNextConnectedMessage())
+				rollBack("leaderWaitForConnectedSignal !lbk.waitForNextConnectedMessage()");
+		}
 	}
 
 	void startConnecting(List<InetSocketAddress> ensembleMembers)
@@ -291,6 +299,11 @@ public class Protocol implements ReceivedMessageCallBack {
 	//-------------------------------------------Follower----------------------------------	
 	private void followerAcceptRequest(ProtocolMessage message,	Status statusHandle) 
 	{
+		try {//testing
+			Thread.sleep(5500);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
 		if(message.getMessageType()==MessageType.JOIN_ENSEMBLE_REQUEST )
 		{
 			//check pointing the current status
@@ -299,76 +312,68 @@ public class Protocol implements ReceivedMessageCallBack {
 
 			fbk.setLeader(message.getSrcSocketAddress());
 			//set failure detector on leader
-			Stat stat = cdrHandle.getZkHandle().setServerFailureDetector(message.getSrcSocketAddress());
-			if(stat==null)
-			{
-				rollBack();
+			Stat stat = cdrHandle.getZkHandle().setServerFailureDetector(fbk.getLeader());
+		//	System.out.println(senderReceiver.getServerSocketAddress()+" SET DETECTOR ON 2 " + fbk.getLeader());
+			if(stat==null){
+				rollBack("followerAcceptRequest leadreDEATH");
 				return;
 			}
+
 			acceptJoinRequest(message.getSrcSocketAddress());
 		}
 
 		if(message.getMessageType()==MessageType.OPERATION_FAILED )
-		{	rollBack();
-			return;
-		}
+			rollBack("followerAcceptRequest OPERATION_FAILED");
+
 	}
 
 	void followerStartConnections(ProtocolMessage message, Status status)
-	{		//testing
-		try {
-			Thread.sleep(5500);
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		if(message.getMessageType()==MessageType.START_ENSEMBLE_CONNECTION )
-		{
+	{
+
+		if(message.getMessageType()==MessageType.START_ENSEMBLE_CONNECTION ){
 			status.setStatus(ServerStatus.FORMING_ENSEMBLE_NOT_LEADER_CONNECTING);
 			addStat();
 			List<InetSocketAddress> ensembleMembers = (List<InetSocketAddress> ) message.msgContent;
 
-			System.out.println( "Follower Start Connecting to: " + ensembleMembers );		
+			//System.out.println( "Follower Start Connecting to: " + ensembleMembers );		
 			boolean success = cdrHandle.followerConnectsEnsemble(ensembleMembers);
 
-			if(success)
-			{	
+			if(success){	
 				fbk.setEnsembleMembers(ensembleMembers);	
 				followerConnectedSignal(message.getSrcSocketAddress());
 				status.setStatus(ServerStatus.FORMING_ENSEMBLE_NOT_LEADER_WAIT_FOR_START_SIGNAL);// need to check if there is enough capacity left
-			}else
-			{
+			}else{
 				followerFailedConnectedSignal(message.getSrcSocketAddress());
-				rollBack();
+				rollBack("followerWaitForStartService    failed = cdrHandle.followerConnectsEnsemble(ensembleMembers");
 				return;
 			}
 		}
 
 		if(message.getMessageType()==MessageType.OPERATION_FAILED )
-			rollBack();
+			rollBack("followerStartConnections OPERATION_FAILED");
 	}
 
 	void followerWaitForStartService(ProtocolMessage message, Status statusHandle)
 	{
-		if(message.getMessageType()==MessageType.START_SERVICE)
-		{
+		if(message.getMessageType()==MessageType.START_SERVICE){
 			String ensemblePath = message.getMsgContent().toString();
-			System.out.println("FOLLOWER:"+ ensemblePath);
-			if(ensemblePath==null || ensemblePath.length()==0)
-			{
+			//System.out.println("FOLLOWER:"+ ensemblePath);
+
+			if(ensemblePath==null || ensemblePath.length()==0){
 				System.out.println("followerWaitForStartService() ensemblepath null!");
 				System.exit(-1);
 			}
 
 			fbk.setEnsemblePath(ensemblePath);
 			cdrHandle.followerStartsService(ensemblePath);
-
 			statusHandle.setStatus(ServerStatus.ALL_FUNCTIONAL_ACCEPT_REQUEST);// need to check if there is enough capacity left
 			//signal the coordinator
+			addStat();
+			printStattransition();
 		}
 
 		if(message.getMessageType()==MessageType.OPERATION_FAILED )
-			rollBack();
+			rollBack("followerWaitForStartService OPERATION_FAILED");
 	}
 
 
@@ -432,31 +437,35 @@ public class Protocol implements ReceivedMessageCallBack {
 	 * 	Might have to think harder rolling back the status , maybe checkpoint the status before forming an ensemble
 	 *  If already connection are established and we receive cancel then other data structure have to e garbage collected
 	 */
-	public void rollBack()
+	public void rollBack(String message)
 	{
-		synchronized(cdrHandle.getStatusHandle())
-		{
+		Status status = cdrHandle.getStatusHandle();
+		System.out.println("Attemp to rollback : " + message + " MYServer:" + senderReceiver.getServerSocketAddress() +"passed port: "+ cdrHandle.getConfigurationHandle().getProtocolPort());
+		synchronized(status){
+			System.out.println("Passed in to rollback");
 			//if(cdrHandle.getStatusHandle().getStatus())
-			System.out.println("ROLLBACKing"+cdrHandle.getConfigurationHandle().getProtocolPort());
+		//	System.out.println("ROLLBACKing"+cdrHandle.getConfigurationHandle().getProtocolPort());
 			addStat();
 			//if I am the leader send abort operation to all the followers
-			if(cdrHandle.isLeader()==true)
-			{
-				for(InetSocketAddress follower : lbk.getAcceptedList())
+			if(cdrHandle.isLeader()==true){
+				for(InetSocketAddress follower : lbk.getRequestedNodeList())
 					abortOperation(follower);
 			}
-
-
 			//recover the latest status before start of operation 
-			System.out.println("InitialState:"+cdrHandle.getLastCheckpointedStatus().getStatus());
-			cdrHandle.getStatusHandle().setStatus(cdrHandle.getLastCheckpointedStatus().getStatus());
-			System.out.println("InitialState:"+cdrHandle.getLastCheckpointedStatus().getStatus());
+			//	System.out.println("InitialState:"+cdrHandle.getLastCheckpointedStatus().getStatus());
+			status.setStatus(cdrHandle.getLastCheckpointedStatus().getStatus());
+			//	System.out.println("InitialState:"+cdrHandle.getLastCheckpointedStatus().getStatus());
 			addStat();
 			printStattransition();
-			System.out.println("ROLLBACKED"+ senderReceiver.getServerSocketAddress());
+		//	System.out.println("ROLLBACKED "+ senderReceiver.getServerSocketAddress());
 
 			lbk.clear();
 			fbk.clear();
 		}
+	}
+
+	public enum FailurePoint{
+		SENDING_JOIN_REQUEST,
+		WAIT_FOR_ACCEPT
 	}
 }

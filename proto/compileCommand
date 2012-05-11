@@ -1,5 +1,4 @@
 protoc -I=$SRC_DIR --java_out=$DST_DIR $SRC_DIR/znodedatastructure.proto
 
 protoc -I=/home/kiarash/workspace/ZKTest --java_out=/home/kiarash/workspace/ZKTest/src /home/kiarash/workspace/ZKTest/proto/znodedatastructure.proto
-
 protoc -I=/home/kiarash/workspace/ZKTest --java_out=/home/kiarash/workspace/ZKTest/src /home/kiarash/workspace/ZKTest/proto/LogEntry.proto

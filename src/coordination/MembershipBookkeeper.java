@@ -43,7 +43,6 @@ public class MembershipBookkeeper {
 		return ensemblePathToEnsembleData.remove(ensemblePath);
 	}
 	
-	
 	/**
 	 * Get the ensembles for which this server is the leader.
 	 * @return

@@ -6,16 +6,16 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.Properties;
 
-public final class Configuration {
+public class Configuration {
 
-	static int protocolPort;
-	static int bufferServerPort;
-	static InetSocketAddress protocolSocketAddress;
-	static InetSocketAddress bufferServerSocketAddress;
+	int protocolPort;
+	int bufferServerPort;
+	InetSocketAddress protocolSocketAddress;
+	InetSocketAddress bufferServerSocketAddress;
 
-	static String configDirectory = "configuration";
+	String configDirectory = "configuration";
 
-	static String defaultPropertiesFile = "defaultProperties";
+	String defaultPropertiesFile = "defaultProperties";
 	static String applicationPropertiesFile = "applicationProperties";
 
 	static String defaultPropertiesPath;
@@ -96,27 +96,27 @@ public final class Configuration {
 		return zkSessionTimeOut;
 	}
 
-	public String getZkConnectionString() {
+	public  String getZkConnectionString() {
 		return zkConnectionString;
 	}
 
-	public String getZkServersGlobalViewRoot() {
+	public  String getZkServersGlobalViewRoot() {
 		return zkServersGlobalViewRoot;
 	}
 
-	public String getZkNameSpace() {
+	public  String getZkNameSpace() {
 		return zkNameSpace;
 	}
 
-	public String getZkServersRoot() {
+	public  String getZkServersRoot() {
 		return zkServersRoot;
 	}
 
-	public String getZkClientRoot() {
+	public  String getZkClientRoot() {
 		return zkClientRoot;
 	}
 
-	public String getZkEnsemblesRoot() {
+	public  String getZkEnsemblesRoot() {
 		return zkEnsemblesRoot;
 	}
 

@@ -17,6 +17,8 @@ import org.apache.zookeeper.data.Stat;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 
+import protocol.FollowerBookkeeper;
+import protocol.LeaderBookKeeper;
 import protocol.Protocol;
 
 
@@ -48,6 +50,8 @@ public class InterProcessCoordinator implements Watcher{
 	static final String defaultConfigFile = "applicationProperties";
 	final int SATURATION_POINT=100;
 	boolean operationLeader=false;
+	LeaderBookKeeper lbk = new LeaderBookKeeper();
+	FollowerBookkeeper fbk = new FollowerBookkeeper();
 	//InetSocketAddress currentLeader=null;
 
 	//clients
@@ -63,7 +67,7 @@ public class InterProcessCoordinator implements Watcher{
 	public InterProcessCoordinator(String configFile)
 	{
 		try {
-			System.out.println(configFile);
+			//System.out.println(configFile);
 			config = new Configuration(configFile);
 			mbk = new MembershipBookkeeper(config);
 			zkCli = new ZookeeperClient(this, config);
@@ -71,9 +75,9 @@ public class InterProcessCoordinator implements Watcher{
 
 			//for testing
 			if(configFile=="applicationProperties")
-				protocol = new Protocol(this, true);
+				protocol = new Protocol(config, this, true, lbk, fbk);
 			else
-				protocol = new Protocol(this, false);
+				protocol = new Protocol(config, this, false, lbk, fbk);
 
 		}catch (UnknownHostException e) {
 			// TODO Auto-generated catch block
@@ -101,7 +105,6 @@ public class InterProcessCoordinator implements Watcher{
 		data.setCapacityLeft(new Random().nextInt(101));
 		data.setSocketAddress( config.getProtocolSocketAddress().toString());
 		data.setBufferServerSocketAddress(config.getBufferServerSocketAddress().toString());
-
 		data.setStat(ServerData.Status.ACCEPT_ENSEMBLE_REQUEST);
 
 		return data.build();
@@ -157,6 +160,7 @@ public class InterProcessCoordinator implements Watcher{
 	public interface ServerStatus
 	{
 		public static final short FORMING_ENSEMBLE_LEADER_STARTED = 10; //request others to join the ensemble
+		//short FORMING_ENSEMBLE_LEADER_SENDING_REQUEST = 33;
 		short FORMING_ENSEMBLE_LEADER_WAIT_FOR_ACCEPT = 11;//wait for all approvals
 		short FORMING_ENSEMBLE_LEADER_WAIT_FOR_CONNECTED_SIGNAL = 12;//wait for all to connect to each other
 		short FORMING_ENSEMBLE_LEADER_EXEC_ROLL_BACK = 32;//
@@ -167,17 +171,16 @@ public class InterProcessCoordinator implements Watcher{
 		short FORMING_ENSEMBLE_NOT_LEADER_ROLL_BACK_ALL_OPERATIONS = 31;//later: when leader fails in the middle or it cancels the job
 
 		short BROKEN_ENSEMBLE = 16; //one of the ensemble that I am member of of is broken
-
 		short BROKEN_ENSEMBLE_FINDING_REPLACEMENT = 17; 
 		short FIXING_ENSEMBLE_LEADER_WAIT_FOR_ACCEPT = 18; 
 		short FIXING_ENSEMBLE_LEADER_WAIT_FOR_CONNECTED_SIGNAL = 19;
-
 		short FIXING_ENSEMBLE_NOT_LEADER_CONNECTING = 20;//the broken ensemble is being fixed and I a listening for results from the leader	
 		short FIXING_ENSEMBLE_NOT_LEADER_WAIT_FOR_START_SIGNAL = 21;
 
 		//later to be completed
 		short I_AM_LEAVING_ENSEMBLE = 22;//I leave ensemble and replace myself with another node
 		short A_MEMBER_LEAVING_ENSEMBLE = 23;//a member is leaving ensemble wait for new one
+
 		short ALL_FUNCTIONAL_REJECT_REQUEST = 24;	//all fine just server is saturated
 		short ALL_FUNCTIONAL_ACCEPT_REQUEST  = 1;//( short) ServerData.Status.ACCEPT_ENSEMBLE_REQUEST.getNumber();// all fine and I can also join a new ensemble
 	}
@@ -255,6 +258,7 @@ public class InterProcessCoordinator implements Watcher{
 		{
 			try {
 				Stat stat = zkCli.setServerFailureDetector(socketAddress);
+				//System.out.println(config.getProtocolSocketAddress()+" SET DETECTOR ON " +socketAddress);
 				if(stat==null)
 				{
 					System.out.println("Null server node. doesnt exist!");
@@ -262,8 +266,8 @@ public class InterProcessCoordinator implements Watcher{
 					//System.exit(-1);
 				}
 				ServerData serverData = zkCli.getServerZnodeDataByProtocolSocketAddress(socketAddress);
-				zkCli.setServerFailureDetector(socketAddress);
-				System.out.println("Ensemble Member Server Socket: "+serverData.getBufferServerSocketAddress());
+			
+				//	System.out.println("Ensemble Member Server Socket: "+serverData.getBufferServerSocketAddress());
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -272,58 +276,6 @@ public class InterProcessCoordinator implements Watcher{
 		}
 
 		return true;
-	}
-	/**
-	 * change: data can be set at startService time rather than here. here we can just set 0 byte[].
-	 * @param ensembleMembers
-	 * @return
-	 */
-	public String leaderCreatesEnsemble(List<InetSocketAddress> ensembleMembers)
-	{
-		EnsembleData.Builder ensembleData = EnsembleData.newBuilder();
-		String absolutePath=null;
-		int minCapacity = SATURATION_POINT;
-
-		try {
-			for(InetSocketAddress ensembleMember : ensembleMembers)
-			{
-
-				ServerData serverData;
-
-				serverData = zkCli.getServerZnodeDataByProtocolSocketAddress(ensembleMember);
-
-				//System.out.println("ServerData:" + serverData.getCapacityLeft());
-				EnsembleData.Member.Builder member = EnsembleData.Member.newBuilder();
-				member.setSocketAddress(ensembleMember.toString());
-				ensembleData.addMembers(member);
-
-				if(serverData.getCapacityLeft() < minCapacity)
-					minCapacity=serverData.getCapacityLeft();
-			}
-
-			ensembleData.setCapacityLeft(minCapacity);
-			ensembleData.setStat(EnsembleData.Status.REJECT_CONNECTION);
-			ensembleData.setLeader(config.getProtocolSocketAddress().toString());
-
-			absolutePath = zkCli.createEnsembleZnode(ensembleData.build());
-
-		} catch (InvalidProtocolBufferException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (KeeperException e) {
-			// TODO Auto-generated catch block
-		
-			//although there is no need for this code but let it be there
-			if(e.code() == KeeperException.Code.NONODE)
-				absolutePath = null;
-			
-			e.printStackTrace();
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-		return absolutePath;
 	}
 
 	/**
@@ -337,8 +289,8 @@ public class InterProcessCoordinator implements Watcher{
 			ensembleData = zkCli.getEnsembleData(ensemblePath);
 			mbk.put(ensemblePath, ensembleData);
 			//	updateServerZnodeEnsembles(ensemblePath, 1);
-			System.out.print("Folowers READ : " + config.getProtocolPort() + " Cap: " + ensembleData.getCapacityLeft()
-					+ " Leader: " + ensembleData.getLeader()+ " Members: " + ensembleData.getMembersList() + " stat: " + ensembleData.getStat() );
+			//System.out.print("Folowers READ : " + config.getProtocolPort() + " Cap: " + ensembleData.getCapacityLeft()
+			//		+ " Leader: " + ensembleData.getLeader()+ " Members: " + ensembleData.getMembersList() + " stat: " + ensembleData.getStat() );
 
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
@@ -386,8 +338,8 @@ public class InterProcessCoordinator implements Watcher{
 			ensembleData = ensembleData.newBuilder(ensembleData).setStat(EnsembleData.Status.ACCPT_CONNECTION).build();
 			zkCli.updateEnsembleZnode(ensemblePath, ensembleData);
 			mbk.put(ensemblePath, ensembleData);
-			System.out.print("LEADER UPDATES: " + config.getProtocolPort() + " Cap: " + ensembleData.getCapacityLeft()
-					+ " Leader: " + ensembleData.getLeader()+ " Members: " + ensembleData.getMembersList() + " stat: " + ensembleData.getStat() );
+		//	System.out.print("LEADER UPDATES: " + config.getProtocolPort() + " Cap: " + ensembleData.getCapacityLeft()
+		//			+ " Leader: " + ensembleData.getLeader()+ " Members: " + ensembleData.getMembersList() + " stat: " + ensembleData.getStat() );
 			//updateServerZnodeEnsembles(ensemblePath, 1);
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
@@ -413,7 +365,7 @@ public class InterProcessCoordinator implements Watcher{
 			//if the failed node is a server
 			if(path.contains(config.getZkServersRoot()))
 				serverFailure(path);
-			
+
 			//if the failed node is a client
 			if(path.contains(config.getZkClientRoot()))
 				clientFailure(path);
@@ -443,23 +395,75 @@ public class InterProcessCoordinator implements Watcher{
 		System.out.println("ServerDead:"+path);
 
 	}
-	/*
-	String getNameOutOfPath(String path)
-	{
+
+	String getNameFromPath(String path){
 		if(!path.contains("/"))
 			return path;
 
-		return getNameOutOfPath(path.substring( path.indexOf("/")+1 ) );
+		return getNameFromPath(path.substring( path.indexOf("/")+1 ) );
 	}
-	 */
+
 	private void serverFailure(String path) {
-		System.out.println("ClientDead:"+path);
+		System.out.println("ClientDead1:"+path);
+		String nodeName = getNameFromPath(path);
+
+		/**
+		 * If I am the leader and on of the follower of the current operation has failed
+		 * then perform rollBack.
+		 * If I am the follower rollBack only if the leader of the operation has failed
+		 * otherwise do nothing and follow the leader command.
+		 */
+/*		System.out.println("FFFFFFFFFFFFUCK      " + lbk.getClass().toString());
+		System.out.println("FFFFFFFFFFFFUCK\n"+
+
+				!lbk.isEmpty() 
+				+"\n"+ !lbk.getConnectedList().isEmpty()
+				+"\n"+  NetworkUtil.contains( lbk.getConnectedList(),nodeName)		
+				+"\n"+NetworkUtil.contains( lbk.getNotConnectedList(),nodeName)		
+				+"\n"+ NetworkUtil.contains( lbk.getNotConnectedList(),nodeName)
+				+"\n"+NetworkUtil.contains( lbk.getAcceptedList(),nodeName)		
+				+"\n"+NetworkUtil.contains( lbk.getNotAcceptedList(),nodeName)		
+				+"\n"+	fbk.isEmpty()	
+				);
+				*/
+		//protocol.rollBack("serverFailure: "+ path + " called by " + config.getProtocolSocketAddress());
+	
+		if( !protocol.getLeaderBookKeeperHandle().isEmpty() && 
+				!protocol.getLeaderBookKeeperHandle().getConnectedList().isEmpty() ){
+			if( NetworkUtil.contains( protocol.getLeaderBookKeeperHandle().getConnectedList(),nodeName)){
+				protocol.rollBack("serverFailure");
+				return;
+			}else{
+				if(NetworkUtil.contains( protocol.getLeaderBookKeeperHandle().getNotConnectedList(),nodeName))
+					return;
+			}
+		}else
+			if( !protocol.getLeaderBookKeeperHandle().isEmpty()  ){
+				if(NetworkUtil.contains( protocol.getLeaderBookKeeperHandle().getAcceptedList(),nodeName))
+					protocol.rollBack("serverFailure");
+				else
+					if(NetworkUtil.contains( protocol.getLeaderBookKeeperHandle().getNotAcceptedList(),nodeName))
+						return;
+			}
+			else
+				if( !protocol.getFollowerBookkeeperHandle().isEmpty() && 
+						NetworkUtil.isEqualAddress( protocol.getFollowerBookkeeperHandle().getLeader(),nodeName) ){
+					protocol.rollBack("serverFailure");
+				}else
+				{
+					/**
+					 * check if the server is one of the current active servers
+					 * if so, change to broken chain mode.
+					 */
+				}
+
+		/*
 		if(isLeader()){
 			System.out.println("leader status befo roll"+	status.getStatus());
 			protocol.rollBack();
-		System.out.println("leader status aftter roll"+	status.getStatus());
+			System.out.println("leader status aftter roll"+	status.getStatus());
 		}
-		//if(isLeader() && protocol.getLeaderBookKeeperHandle().getAcceptedList().toString().contains(path))
+		 */	//if(isLeader() && protocol.getLeaderBookKeeperHandle().getAcceptedList().toString().contains(path))
 
 		//if from current forming ensemble then roll back operation
 		//if not see which ensemble it is 
@@ -470,5 +474,7 @@ public class InterProcessCoordinator implements Watcher{
 		//
 
 	}
+
+
 
 }

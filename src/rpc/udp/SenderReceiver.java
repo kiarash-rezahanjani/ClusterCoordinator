@@ -7,6 +7,7 @@ import java.util.List;
 import protocol.AbstractMessage;
 import protocol.ProtocolMessage;
 import protocol.ReceivedMessageCallBack;
+import utility.Configuration;
 
 //later work: catch exceptions and retry mechanism
 public class SenderReceiver implements Closeable
@@ -15,6 +16,7 @@ public class SenderReceiver implements Closeable
 	private UdpClient sender ;
 	private UdpServer receiver ;
 	private InetSocketAddress serverSocketAddress;
+	Configuration config ;
 /*	
 	public SenderReceiver(ReceivedMessageCallBack callback)
 	{
@@ -32,11 +34,12 @@ public class SenderReceiver implements Closeable
 		serverSocketAddress = receiver.getServerSocketAddress();
 	}
 */
-	public SenderReceiver(ReceivedMessageCallBack callback, int port)
+	public SenderReceiver(Configuration config, ReceivedMessageCallBack callback)
 	{
+		this.config =config;
 		this.callback = callback;
 		sender = new UdpClient();
-		receiver = new UdpServer(port, callback);
+		receiver = new UdpServer(config, callback);
 		try {
 			receiver.start();
 		} catch (IOException e) {
@@ -50,7 +53,7 @@ public class SenderReceiver implements Closeable
 	
 	public InetSocketAddress getServerSocketAddress()
 	{
-		return serverSocketAddress;
+		return config.getProtocolSocketAddress();
 	}
 
 	public void send(InetSocketAddress destination, Object message)
